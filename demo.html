@@ -2184,7 +2184,7 @@
       function onTouchPointerDown(e) {
         if (e.pointerType !== 'touch') return;
         if (!canvasViewport.contains(e.target)) return; // header / panel
-        if (activeResize || isDraggingTonearm) return;
+        if (activeResize) return;
         if (dragState && dragState.phase !== 'pending') return;
 
         touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2232,7 +2232,7 @@
           tracked.y = e.clientY;
         }
         if (!tracked || !touchGesture) return;
-        if (activeResize || isDraggingTonearm) return;
+        if (activeResize) return;
         if (dragState && dragState.phase !== 'pending') return;
 
         const g = touchGesture;
