@@ -197,6 +197,35 @@
       will-change: transform;
     }
 
+    /* 镜头拉远：冻结细节、阴影与动画，只保留卡片色块和章节牌 */
+    .canvas-world.is-far .widget-card {
+      box-shadow: none !important;
+      transition: none !important;
+    }
+
+    .canvas-world.is-far .widget-card:not(.c-marker) {
+      pointer-events: none;
+    }
+
+    .canvas-world.is-far .c-record__disc,
+    .canvas-world.is-far .c-record__slot,
+    .canvas-world.is-far .c-record__body,
+    .canvas-world.is-far .c-story__inner,
+    .canvas-world.is-far .c-lyrics__scroll,
+    .canvas-world.is-far .c-visual__art,
+    .canvas-world.is-far .c-visual__caption,
+    .canvas-world.is-far .c-visual__badge,
+    .canvas-world.is-far .c-tape,
+    .canvas-world.is-far .drag-handle-zone,
+    .canvas-world.is-far .resize-handle {
+      visibility: hidden !important;
+    }
+
+    .canvas-world.is-far .c-record__eq i,
+    .canvas-world.is-far .c-visual__glow {
+      animation: none !important;
+    }
+
     /* 桌面：卡片由 JS 按 data-col/row 绝对定位，空位保留、不自动补位，坐标可为负 */
     .spatial-grid {
       position: relative;
@@ -1557,7 +1586,7 @@
           const visual = createCardShell('c-visual c-card--dark', '1x1', pos.col + 1, pos.row + 1, ALL_SIZES, track, 'visual', index);
           visual.innerHTML = `
             ${DRAG_ZONE}
-            <img class="c-visual__art" src="${track.image}" alt="${title} 四周年插画" draggable="false" />
+            <img class="c-visual__art" src="${track.image}" alt="${title} 四周年插画" loading="lazy" decoding="async" draggable="false" />
             <div class="c-visual__glow" aria-hidden="true"></div>
             <div class="c-visual__badge">正在播放</div>
             <div class="c-caption">
@@ -1685,6 +1714,7 @@
       let camScale = 1;
       const MIN_SCALE = 0.15;
       const MAX_SCALE = 1.8;
+      const FAR_ZOOM = 0.34;
       const DOT_GRID_STEP = 28;
       const FIT_PADDING = 32;
 
@@ -1723,6 +1753,7 @@
       // --cam-scale 会让拖拽区/缩放手柄重新布局，点阵背景会全屏重绘；
       // 这两类样式只在手势结束、镜头停稳时同步一次。
       function syncCameraChrome() {
+        canvasWorld.classList.toggle('is-far', camScale < FAR_ZOOM);
         canvasViewport.style.setProperty('--cam-scale', camScale.toFixed(4));
         const scaledStep = DOT_GRID_STEP * camScale;
         canvasViewport.style.backgroundSize = `${scaledStep.toFixed(2)}px ${scaledStep.toFixed(2)}px`;
@@ -2616,13 +2647,18 @@
         if (!visible) flyToCluster(index, 720);
       }
 
+      let timelineTick = 0;
+
       function animate(nowTs) {
         const energy = engine.tick(nowTs);
-        rootEl.style.setProperty('--audio-energy', energy.toFixed(3));
-
         const active = clusters[currentTrackIndex];
-        if (active) {
-          active.cards.forEach((card) => card.style.setProperty('--cluster-energy', energy.toFixed(3)));
+        const far = camScale < FAR_ZOOM;
+
+        if (!far) {
+          rootEl.style.setProperty('--audio-energy', energy.toFixed(3));
+          if (active) {
+            active.cards.forEach((card) => card.style.setProperty('--cluster-energy', energy.toFixed(3)));
+          }
         }
 
         if (engine.isPlaying) {
@@ -2632,12 +2668,13 @@
           if (vinylVelocity < 0.004) vinylVelocity = 0;
         }
 
-        if (vinylVelocity > 0 && active) {
+        if (!far && vinylVelocity > 0 && active) {
           vinylAngle = (vinylAngle + vinylVelocity) % 360;
           active.disc.style.transform = `rotate(${vinylAngle.toFixed(2)}deg)`;
         }
 
-        updateTimelineUI(false);
+        // 时间轴 20fps 已经足够，避免每帧写进度/时间
+        if (!far && (timelineTick++ % 3 === 0)) updateTimelineUI(false);
 
         if (engine.isPlaying || vinylVelocity > 0 || energy > 0.005) {
           rafId = requestAnimationFrame(animate);
@@ -2662,6 +2699,22 @@
           engine.pause();
           syncPlayStateUI();
         }
+      });
+
+      // 离开页面/进 bfcache 前显式销毁常驻任务，避免长会话与往返恢复后累积
+      window.addEventListener('pagehide', () => {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        if (cameraAnimRaf) { cancelAnimationFrame(cameraAnimRaf); cameraAnimRaf = null; }
+        if (cameraRaf) { cancelAnimationFrame(cameraRaf); cameraRaf = 0; }
+        if (edgeScrollRaf) { cancelAnimationFrame(edgeScrollRaf); edgeScrollRaf = null; }
+        if (wheelGesture && wheelGesture.timer) clearTimeout(wheelGesture.timer);
+        if (dragState && dragState.timer) clearTimeout(dragState.timer);
+        engine.pause();
+        engine.audio.removeAttribute('src');
+        engine.audio.load();
+        if (engine.ctx) engine.ctx.close().catch(() => {});
+        envelopeCache.clear();
+        touchPointers.clear();
       });
 
       /* =========================================================
