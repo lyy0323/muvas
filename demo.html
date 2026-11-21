@@ -197,7 +197,7 @@
       will-change: transform;
     }
 
-    /* 镜头拉远：冻结细节、阴影与动画，只保留卡片色块和章节牌 */
+    /* 镜头拉远：文字与低清缩略图保留，只暂停阴影/动画并降低刷新 */
     .canvas-world.is-far .widget-card {
       box-shadow: none !important;
       transition: none !important;
@@ -207,22 +207,14 @@
       pointer-events: none;
     }
 
-    .canvas-world.is-far .c-record__disc,
-    .canvas-world.is-far .c-record__slot,
-    .canvas-world.is-far .c-record__body,
-    .canvas-world.is-far .c-story__inner,
-    .canvas-world.is-far .c-lyrics__scroll,
-    .canvas-world.is-far .c-visual__art,
-    .canvas-world.is-far .c-visual__caption,
-    .canvas-world.is-far .c-visual__badge,
-    .canvas-world.is-far .c-tape,
     .canvas-world.is-far .drag-handle-zone,
     .canvas-world.is-far .resize-handle {
       visibility: hidden !important;
     }
 
     .canvas-world.is-far .c-record__eq i,
-    .canvas-world.is-far .c-visual__glow {
+    .canvas-world.is-far .c-visual__glow,
+    .canvas-world.is-far .c-visual.is-playing .c-visual__art {
       animation: none !important;
     }
 
@@ -1513,7 +1505,7 @@
             <div class="c-record__slot" aria-hidden="true"></div>
             <div class="c-record__disc">
               <div class="c-record__disc-spin" data-role="disc">
-                <div class="c-record__disc-art" style="background-image:url('${track.image}')"></div>
+                <div class="c-record__disc-art" data-full="${track.image}" data-thumb="${track.image.replace('/stories/', '/thumbs/')}" style="background-image:url('${track.image}')"></div>
                 <div class="c-record__disc-grooves" aria-hidden="true"></div>
                 <div class="c-record__disc-irid" aria-hidden="true"></div>
               </div>
@@ -1586,7 +1578,7 @@
           const visual = createCardShell('c-visual c-card--dark', '1x1', pos.col + 1, pos.row + 1, ALL_SIZES, track, 'visual', index);
           visual.innerHTML = `
             ${DRAG_ZONE}
-            <img class="c-visual__art" src="${track.image}" alt="${title} 四周年插画" loading="lazy" decoding="async" draggable="false" />
+            <img class="c-visual__art" src="${track.image}" data-full="${track.image}" data-thumb="${track.image.replace('/stories/', '/thumbs/')}" alt="${title} 四周年插画" loading="lazy" decoding="async" draggable="false" />
             <div class="c-visual__glow" aria-hidden="true"></div>
             <div class="c-visual__badge">正在播放</div>
             <div class="c-caption">
@@ -1752,8 +1744,25 @@
 
       // --cam-scale 会让拖拽区/缩放手柄重新布局，点阵背景会全屏重绘；
       // 这两类样式只在手势结束、镜头停稳时同步一次。
+      let farImages = null;
+
+      function syncFarImages(far) {
+        if (far === farImages) return;
+        farImages = far;
+        canvasWorld.querySelectorAll('.c-visual__art').forEach((img) => {
+          const next = far ? img.dataset.thumb : img.dataset.full;
+          if (next) img.src = next;
+        });
+        canvasWorld.querySelectorAll('.c-record__disc-art').forEach((art) => {
+          const next = far ? art.dataset.thumb : art.dataset.full;
+          if (next) art.style.backgroundImage = `url('${next}')`;
+        });
+      }
+
       function syncCameraChrome() {
-        canvasWorld.classList.toggle('is-far', camScale < FAR_ZOOM);
+        const far = camScale < FAR_ZOOM;
+        canvasWorld.classList.toggle('is-far', far);
+        syncFarImages(far);
         canvasViewport.style.setProperty('--cam-scale', camScale.toFixed(4));
         const scaledStep = DOT_GRID_STEP * camScale;
         canvasViewport.style.backgroundSize = `${scaledStep.toFixed(2)}px ${scaledStep.toFixed(2)}px`;
@@ -2648,11 +2657,18 @@
       }
 
       let timelineTick = 0;
+      let lastFarFrame = 0;
 
       function animate(nowTs) {
+        const far = camScale < FAR_ZOOM;
+        if (far && nowTs - lastFarFrame < 200) {
+          rafId = requestAnimationFrame(animate);
+          return;
+        }
+        if (far) lastFarFrame = nowTs;
+
         const energy = engine.tick(nowTs);
         const active = clusters[currentTrackIndex];
-        const far = camScale < FAR_ZOOM;
 
         if (!far) {
           rootEl.style.setProperty('--audio-energy', energy.toFixed(3));
@@ -2673,8 +2689,12 @@
           active.disc.style.transform = `rotate(${vinylAngle.toFixed(2)}deg)`;
         }
 
-        // 时间轴 20fps 已经足够，避免每帧写进度/时间
-        if (!far && (timelineTick++ % 3 === 0)) updateTimelineUI(false);
+        // 近景 20fps；远距 5fps 刷新下每 5 帧更新一次时间轴（约 1fps）
+        if (far) {
+          if (timelineTick++ % 5 === 0) updateTimelineUI(false);
+        } else if (timelineTick++ % 3 === 0) {
+          updateTimelineUI(false);
+        }
 
         if (engine.isPlaying || vinylVelocity > 0 || energy > 0.005) {
           rafId = requestAnimationFrame(animate);
