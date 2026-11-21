@@ -2,3 +2,4 @@
 .vercel/
 .git/
 .DS_Store
+.vercel-config/

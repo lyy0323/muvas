@@ -3,3 +3,5 @@
 .riff/
 node_modules/
 *.log
+
+.vercel-config/
