@@ -1,0 +1,3537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>夜航船 · 数字黑胶画布</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* =========================================================
+       1. Design Tokens & Theme Palette (Yuye-pink)
+       ========================================================= */
+    :root {
+      --bg-canvas: #F8F2F5;
+      --accent: #DDD4ED;
+      --accent-strong: #C2B2E0;
+      --accent-soft: rgba(221, 212, 237, 0.45);
+      --text-primary: #1C1917;
+      --text-secondary: #57534E;
+      --text-muted: #8A817C;
+
+      --surface-card: #FFFFFF;
+      --surface-paper: #FCF9F5;
+      --surface-note: #FDFBF7;
+      --border-subtle: rgba(28, 25, 23, 0.07);
+
+      --radius-card: 16px;
+      --radius-pill: 999px;
+
+      --shadow-card:
+        0 1px 2px rgba(28, 25, 23, 0.04),
+        0 8px 24px -6px rgba(68, 52, 79, 0.08),
+        0 2px 6px -1px rgba(28, 25, 23, 0.03);
+      --shadow-card-hover:
+        0 2px 4px rgba(28, 25, 23, 0.05),
+        0 14px 32px -8px rgba(68, 52, 79, 0.13);
+      --shadow-lifted:
+        0 22px 48px -10px rgba(45, 34, 62, 0.24),
+        0 8px 20px -4px rgba(28, 25, 23, 0.12);
+
+      --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-serif: 'Noto Serif SC', Georgia, serif;
+
+      --audio-energy: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      overscroll-behavior: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    /* Ambient Glow driven by Web Audio AnalyserNode */
+    .ambient-backdrop {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(88px);
+      will-change: transform, opacity;
+      transition: opacity 0.25s ease;
+    }
+
+    .ambient-orb--1 {
+      width: 56vw;
+      height: 56vw;
+      max-width: 720px;
+      max-height: 720px;
+      top: -18%;
+      left: -10%;
+      background: radial-gradient(circle, #DDD4ED 0%, rgba(221, 212, 237, 0) 70%);
+      opacity: calc(0.45 + var(--audio-energy) * 0.45);
+      transform: scale(calc(1 + var(--audio-energy) * 0.14));
+    }
+
+    .ambient-orb--2 {
+      width: 48vw;
+      height: 48vw;
+      max-width: 640px;
+      max-height: 640px;
+      bottom: -20%;
+      right: -8%;
+      background: radial-gradient(circle, #EEDAE5 0%, rgba(238, 218, 229, 0) 70%);
+      opacity: calc(0.4 + var(--audio-energy) * 0.4);
+      transform: scale(calc(1 + var(--audio-energy) * 0.12));
+    }
+
+    /* Subtle paper grain overlay */
+    .paper-grain {
+      position: relative;
+    }
+    .paper-grain::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* =========================================================
+       2. Fixed Minimalist Editorial Header
+       ========================================================= */
+    .floating-header {
+      position: fixed;
+      top: 14px;
+      touch-action: none;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(1280px, calc(100vw - 28px));
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      box-shadow: 0 4px 20px rgba(28, 25, 23, 0.05);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+    }
+
+    .brand-artist {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .pill-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent-strong);
+    }
+
+    .pill-btn:active {
+      transform: scale(0.97);
+    }
+
+    .pill-btn.is-playing {
+      background: var(--accent);
+      border-color: var(--accent-strong);
+    }
+
+    .timecode {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* =========================================================
+       3. Infinite Canvas Viewport & World Layer (all breakpoints)
+       ========================================================= */
+    .canvas-viewport {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      cursor: grab;
+      background-image: radial-gradient(rgba(28, 25, 23, 0.11) 1px, transparent 1px);
+      background-size: 28px 28px;
+      background-position: 0px 0px;
+      touch-action: none;
+    }
+
+    .canvas-viewport.is-panning {
+      cursor: grabbing;
+    }
+
+    .canvas-viewport.space-ready {
+      cursor: grab;
+    }
+
+    .canvas-world {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    /* 桌面：卡片由 JS 按 data-col/row 绝对定位，空位保留、不自动补位，坐标可为负 */
+    .spatial-grid {
+      position: relative;
+      width: 0;
+      height: 0;
+    }
+
+    /* 窄屏只压缩 header，画布本身在所有尺寸下都是同一套无限画布 */
+    @media (max-width: 768px) {
+      .floating-header {
+        top: 10px;
+        width: calc(100vw - 20px);
+        padding: 8px 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      /* 手机上让 header 收成一行，把更多高度留给画布 */
+      .brand-artist {
+        display: none;
+      }
+    }
+
+    /* =========================================================
+       4. Widget Card, Top Drag Zone & Bottom-Right Resize Handle
+       ========================================================= */
+    .widget-card,
+    .drag-placeholder {
+      position: relative;
+      border-radius: var(--radius-card);
+    }
+
+    .widget-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+      container-type: size;
+      container-name: widget;
+      cursor: default;
+    }
+
+    .widget-card:hover {
+      box-shadow: var(--shadow-card-hover);
+      border-color: rgba(28, 25, 23, 0.12);
+    }
+
+    /* --- Top Edge Long-Press Drag-to-Reorder Zone --- */
+    .drag-handle-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .drag-handle-zone:active {
+      cursor: grabbing;
+    }
+
+    .drag-pill {
+      width: 34px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(28, 25, 23, 0.16);
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, width 0.2s ease;
+    }
+
+    .widget-card.dark-chrome .drag-pill {
+      background: rgba(255, 255, 255, 0.38);
+    }
+
+    .widget-card:hover .drag-pill,
+    .drag-handle-zone:hover .drag-pill {
+      opacity: 0.85;
+      transform: translateY(0);
+    }
+
+    /* 触摸设备：拖拽区/缩放手柄在屏幕上至少 40px，并常显拖拽提示 */
+    @media (pointer: coarse) {
+      .drag-handle-zone {
+        height: max(28px, calc(40px / var(--cam-scale, 1)));
+      }
+      .drag-pill {
+        opacity: 0.55;
+        transform: translateY(0);
+      }
+      .widget-card .resize-handle {
+        width: max(30px, calc(40px / var(--cam-scale, 1)));
+        height: max(30px, calc(40px / var(--cam-scale, 1)));
+      }
+    }
+
+    .widget-card.is-holding .drag-pill {
+      opacity: 1;
+      background: var(--accent-strong);
+      width: 44px;
+    }
+
+    .widget-card.is-lifted {
+      z-index: 90 !important;
+      box-shadow: var(--shadow-lifted), 0 0 0 2.5px var(--accent) !important;
+      border-color: var(--accent-strong) !important;
+      pointer-events: none;
+      will-change: transform, left, top;
+    }
+
+    .drag-placeholder {
+      background: rgba(221, 212, 237, 0.34);
+      border: 2px dashed var(--accent-strong);
+    }
+
+    /* --- Bottom-Right Drag-to-Resize Handle --- */
+    .resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 30px;
+      height: 30px;
+      z-index: 26;
+      cursor: nwse-resize;
+      touch-action: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 7px;
+      opacity: 0.32;
+      transition: opacity 0.2s ease;
+    }
+
+    .widget-card:hover .resize-handle,
+    .resize-handle:hover,
+    .widget-card.is-resizing .resize-handle {
+      opacity: 0.95;
+    }
+
+    .resize-handle svg {
+      width: 13px;
+      height: 13px;
+      color: var(--text-secondary);
+      transition: color 0.2s ease;
+    }
+
+    .widget-card.dark-chrome .resize-handle svg {
+      color: rgba(248, 242, 245, 0.85);
+    }
+
+    .resize-handle:hover svg,
+    .widget-card.is-resizing .resize-handle svg {
+      color: var(--text-primary);
+    }
+
+    .widget-card.dark-chrome .resize-handle:hover svg {
+      color: var(--accent);
+    }
+
+    /* Translucent #DDD4ED Snap Preview Overlay (strictly hidden when inactive) */
+    .resize-preview-ghost {
+      position: fixed;
+      z-index: 80;
+      display: none;
+      opacity: 0;
+      pointer-events: none;
+      border-radius: var(--radius-card);
+      background: rgba(221, 212, 237, 0.32);
+      border: 2px dashed var(--accent-strong);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+      transition:
+        width 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+        height 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .resize-preview-ghost.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    /* =========================================================
+       5. Widget 1: Skeuomorphic Vinyl Player (VinylPlayer)
+       ========================================================= */
+    .vinyl-card {
+      background: linear-gradient(145deg, #FBF8FA 0%, #F2ECF4 100%);
+      padding: 20px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .turntable-deck {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      gap: 18px;
+    }
+
+    .platter-wrap {
+      position: relative;
+      width: min(250px, 78cqmin);
+      height: min(250px, 78cqmin);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .platter-rim {
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #E7E2E9 0%, #C7BFCF 50%, #F5F2F6 100%);
+      box-shadow:
+        0 10px 24px rgba(28, 25, 23, 0.16),
+        inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    }
+
+    .vinyl-disc {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background:
+        repeating-radial-gradient(
+          circle at center,
+          #161517 0px,
+          #161517 2px,
+          #211F24 3px,
+          #161517 4px
+        );
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+        inset 0 0 28px rgba(0, 0, 0, 0.85);
+      will-change: transform;
+      cursor: pointer;
+    }
+
+    .vinyl-sheen {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 20deg,
+        transparent 0deg,
+        rgba(255, 255, 255, 0.13) 34deg,
+        transparent 72deg,
+        transparent 180deg,
+        rgba(221, 212, 237, 0.16) 218deg,
+        transparent 255deg
+      );
+      pointer-events: none;
+    }
+
+    .vinyl-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 38%;
+      height: 38%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #EFE9F7 0%, #DDD4ED 62%, #BEB0DB 100%);
+      border: 3px solid #1C1917;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6px;
+      color: var(--text-primary);
+      box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.65);
+    }
+
+    .vinyl-label-title {
+      font-family: var(--font-serif);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: 0.06em;
+    }
+
+    .vinyl-spindle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #FFFFFF, #9E97A6);
+      border: 1px solid rgba(28, 25, 23, 0.35);
+      z-index: 3;
+    }
+
+    .vinyl-overlay-play {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 6;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: rgba(28, 25, 23, 0.72);
+      backdrop-filter: blur(6px);
+      color: #FFFFFF;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .vinyl-overlay-play:hover {
+      background: #1C1917;
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    /* Interactive Tonearm */
+    .tonearm-assembly {
+      position: absolute;
+      top: 8px;
+      right: 14px;
+      width: 68px;
+      height: 210px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .tonearm-base {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #FFFFFF 0%, #D5CFD9 55%, #A69EAD 100%);
+      border: 1px solid rgba(28, 25, 23, 0.18);
+      box-shadow: 0 4px 10px rgba(28, 25, 23, 0.16);
+    }
+
+    .tonearm-pivot {
+      position: absolute;
+      top: 28px;
+      right: 28px;
+      width: 0;
+      height: 0;
+      transform-origin: 0 0;
+      transform: rotate(6deg);
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: auto;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .tonearm-pivot.dragging {
+      transition: none;
+      cursor: grabbing;
+    }
+
+    .tonearm-rod {
+      position: absolute;
+      top: 0;
+      left: -3px;
+      width: 6px;
+      height: 152px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #9B95A1 0%, #F4F1F6 45%, #847D8B 100%);
+      box-shadow: 2px 4px 8px rgba(28, 25, 23, 0.2);
+    }
+
+    .tonearm-headshell {
+      position: absolute;
+      top: 142px;
+      left: -8px;
+      width: 16px;
+      height: 30px;
+      border-radius: 4px 4px 6px 6px;
+      background: linear-gradient(135deg, #2D2A32 0%, #1C1917 100%);
+      transform: rotate(18deg);
+      box-shadow: 0 4px 8px rgba(28, 25, 23, 0.3);
+    }
+
+    .tonearm-headshell::after {
+      content: "";
+      position: absolute;
+      bottom: 4px;
+      left: 5px;
+      width: 6px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .vinyl-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 4;
+      padding-right: 12px;
+    }
+
+    .track-info-title {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.25;
+    }
+
+    .track-info-artist {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .transport-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tactile-play-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: var(--text-primary);
+      color: #FFFFFF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(28, 25, 23, 0.22);
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .tactile-play-btn:hover {
+      transform: scale(1.05);
+      background: #2E2926;
+    }
+
+    .tactile-play-btn:active {
+      transform: scale(0.95);
+    }
+
+    .progress-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .progress-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(28, 25, 23, 0.1);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .progress-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent);
+      box-shadow: 0 2px 6px rgba(28, 25, 23, 0.25);
+      cursor: pointer;
+    }
+
+    .progress-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+    }
+
+    /* @container for VinylPlayer */
+    @container widget (max-width: 340px) and (max-height: 260px) {
+      .vinyl-card {
+        padding: 12px;
+        justify-content: center;
+      }
+      .vinyl-controls,
+      .tonearm-assembly {
+        display: none;
+      }
+      .platter-wrap {
+        width: 152px;
+        height: 152px;
+      }
+      .vinyl-overlay-play {
+        display: inline-flex;
+      }
+    }
+
+    @container widget (min-width: 341px) and (max-height: 260px) {
+      .vinyl-card {
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 22px;
+      }
+      .turntable-deck {
+        flex: 0 0 auto;
+      }
+      .platter-wrap {
+        width: 154px;
+        height: 154px;
+      }
+      .tonearm-assembly {
+        display: none;
+      }
+      .vinyl-controls {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+
+    @container widget (max-width: 400px) and (min-height: 261px) and (max-height: 340px) {
+      .vinyl-card {
+        padding: 18px 16px 14px;
+      }
+      .platter-wrap {
+        width: 164px;
+        height: 164px;
+      }
+      .tonearm-assembly {
+        transform: scale(0.76);
+        transform-origin: top right;
+        top: 6px;
+        right: 12px;
+      }
+      .track-info-title {
+        font-size: 16px;
+      }
+    }
+
+    /* =========================================================
+       6. Widget 2: Editorial LRC Lyrics Card (EditorialLyrics)
+       ========================================================= */
+    .lyrics-card {
+      background: var(--surface-paper);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 22px 20px;
+    }
+
+    .lyrics-scroll {
+      position: relative;
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 28px 4px;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    }
+
+    .lyrics-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lyric-line {
+      padding: 8px 14px;
+      margin-bottom: 6px;
+      border-radius: 10px;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .lyric-line:hover {
+      color: var(--text-primary);
+      background: rgba(221, 212, 237, 0.25);
+    }
+
+    .lyric-line.active {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 18.5px;
+      background: var(--accent);
+      box-shadow: 0 2px 10px rgba(221, 212, 237, 0.55);
+      transform: translateX(4px);
+    }
+
+    .lyrics-spotlight {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    .lyrics-spotlight-text {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.55;
+      color: var(--text-primary);
+      background: linear-gradient(transparent 62%, var(--accent) 62%);
+      display: inline;
+    }
+
+    @container widget (max-width: 340px) and (max-height: 260px) {
+      .lyrics-scroll {
+        display: none;
+      }
+      .lyrics-spotlight {
+        display: flex;
+      }
+    }
+
+    @container widget (max-height: 260px) and (min-width: 341px) {
+      .lyrics-card {
+        padding: 18px 18px 14px;
+      }
+      .lyrics-scroll {
+        padding: 14px 2px;
+      }
+      .lyric-line {
+        font-size: 14.5px;
+        padding: 5px 10px;
+      }
+      .lyric-line.active {
+        font-size: 16.5px;
+      }
+    }
+
+    /* =========================================================
+       7. Widget 3: Tactile Note Card (TactileNote)
+       ========================================================= */
+    .note-card {
+      background: var(--surface-note);
+      height: 100%;
+      padding: 26px 22px 20px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-image: linear-gradient(to bottom, transparent 27px, rgba(28, 25, 23, 0.04) 28px);
+      background-size: 100% 28px;
+    }
+
+    .washi-tape {
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-1.5deg);
+      width: 92px;
+      height: 20px;
+      background: rgba(221, 212, 237, 0.78);
+      border-left: 2px dotted rgba(255, 255, 255, 0.75);
+      border-right: 2px dotted rgba(255, 255, 255, 0.75);
+      box-shadow: 0 2px 6px rgba(28, 25, 23, 0.07);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .note-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .note-title {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .note-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .note-body {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 13.5px;
+      line-height: 1.85;
+      color: var(--text-secondary);
+      scrollbar-width: none;
+    }
+
+    .note-body::-webkit-scrollbar {
+      display: none;
+    }
+
+    .note-body p + p {
+      margin-top: 10px;
+    }
+
+    .note-extended {
+      display: none;
+    }
+
+    .note-signature {
+      display: none;
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(28, 25, 23, 0.12);
+      font-family: var(--font-serif);
+      font-size: 13px;
+      color: var(--text-primary);
+      text-align: right;
+    }
+
+    .note-pullquote {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 6px;
+    }
+
+    .note-pullquote-mark {
+      font-family: var(--font-serif);
+      font-size: 30px;
+      line-height: 1;
+      color: var(--accent-strong);
+      margin-bottom: 4px;
+    }
+
+    .note-pullquote-text {
+      font-family: var(--font-serif);
+      font-size: 14.5px;
+      font-weight: 600;
+      line-height: 1.65;
+      color: var(--text-primary);
+    }
+
+    @container widget (max-width: 340px) and (max-height: 260px) {
+      .note-header,
+      .note-body {
+        display: none;
+      }
+      .note-pullquote {
+        display: flex;
+      }
+    }
+
+    @container widget (min-height: 320px) {
+      .note-extended,
+      .note-signature {
+        display: block;
+      }
+      .note-title {
+        font-size: 19px;
+      }
+      .note-body {
+        font-size: 14.5px;
+      }
+    }
+
+    /* =========================================================
+       8. Widget 4: Clean MV Visual Canvas (MediaVideo)
+       ========================================================= */
+    .mv-card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #14121A;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .mv-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mv-overlay-bottom {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 24px 16px 12px;
+      background: linear-gradient(to top, rgba(16, 14, 22, 0.78) 0%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #F8F2F5;
+      pointer-events: none;
+    }
+
+    .mv-caption-title {
+      font-family: var(--font-serif);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+    }
+
+    .mv-progress-track {
+      width: 100%;
+      height: 2.5px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+    }
+
+    .mv-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.1s linear;
+    }
+
+    /* =========================================================
+       9. Widget 5: Editorial Media Image Card (MediaImage)
+       ========================================================= */
+    .image-card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #1C1924;
+      overflow: hidden;
+      cursor: zoom-in;
+    }
+
+    .image-artwork {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      object-position: 50% 45%;
+      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .image-card:hover .image-artwork {
+      transform: scale(1.04);
+    }
+
+    .image-caption {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 24px 16px 12px;
+      background: linear-gradient(to top, rgba(20, 17, 26, 0.72), transparent);
+      color: #F8F2F5;
+      pointer-events: none;
+    }
+
+    .image-caption-title {
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    /* =========================================================
+       10. Lightbox Modal
+       ========================================================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      background: rgba(24, 20, 30, 0.74);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-panel {
+      position: relative;
+      width: min(860px, 94vw);
+      max-height: 86vh;
+      background: #16141D;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .modal-backdrop.open .modal-panel {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      color: #F8F2F5;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: var(--font-serif);
+      font-size: 14px;
+    }
+
+    .modal-close {
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #121018;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .modal-body canvas,
+    .modal-body svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-backdrop" aria-hidden="true">
+    <div class="ambient-orb ambient-orb--1"></div>
+    <div class="ambient-orb ambient-orb--2"></div>
+  </div>
+
+  <!-- Resize Snap Preview Ghost -->
+  <div class="resize-preview-ghost" id="resizePreviewGhost" aria-hidden="true"></div>
+
+  <!-- Fixed Editorial Header -->
+  <header class="floating-header">
+    <div class="brand-group">
+      <span class="brand-title">夜航船</span>
+      <span class="brand-artist">晚风电台</span>
+    </div>
+
+    <div class="header-controls">
+      <button class="pill-btn" id="headerPlayBtn" type="button" aria-label="播放或暂停">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" id="headerPlayIcon">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+        <span class="timecode" id="headerTimecode">00:00 / 01:00</span>
+      </button>
+
+      <!-- Top-Right Return to Centroid Button -->
+      <button class="pill-btn" id="btnReturnCentroid" type="button" aria-label="回到质心">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="7" />
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+        </svg>
+        <span>回到质心</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Infinite Canvas Viewport -->
+  <main class="canvas-viewport" id="canvasViewport">
+    <div class="canvas-world" id="canvasWorld">
+      <section class="spatial-grid" id="spatialGrid" aria-label="音乐空间画布">
+
+        <!-- =======================================================
+             WIDGET 1: Skeuomorphic Vinyl Player (Default 2x2)
+             ======================================================= -->
+        <article
+          class="widget-card"
+          id="widget-player"
+          data-size="2x2"
+          data-col="0"
+          data-row="0"
+          data-allowed-sizes="1x1,2x1,2x2"
+        >
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>
+          <div class="vinyl-card">
+            <div class="turntable-deck">
+              <div class="platter-wrap">
+                <div class="platter-rim"></div>
+                <div class="vinyl-disc" id="vinylDisc">
+                  <div class="vinyl-sheen"></div>
+                  <div class="vinyl-label">
+                    <div class="vinyl-label-title">夜航船</div>
+                  </div>
+                  <div class="vinyl-spindle"></div>
+                </div>
+                <button class="vinyl-overlay-play" id="vinylOverlayPlay" type="button" aria-label="播放或暂停">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" id="overlayPlayIcon">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="tonearm-assembly">
+                <div class="tonearm-base"></div>
+                <div class="tonearm-pivot" id="tonearmPivot">
+                  <div class="tonearm-rod"></div>
+                  <div class="tonearm-headshell"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vinyl-controls">
+              <div>
+                <div class="track-info-title">夜航船</div>
+                <div class="track-info-artist">晚风电台</div>
+              </div>
+
+              <div class="transport-row">
+                <button class="tactile-play-btn" id="vinylPlayBtn" type="button" aria-label="播放或暂停">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="vinylPlayIcon">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </button>
+                <div class="progress-wrap">
+                  <input
+                    type="range"
+                    class="progress-slider"
+                    id="masterSeekSlider"
+                    min="0"
+                    max="60"
+                    step="0.1"
+                    value="0"
+                    aria-label="播放进度"
+                  />
+                  <div class="progress-times">
+                    <span id="playerCurrentTime">00:00</span>
+                    <span>01:00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="resize-handle" aria-label="拖动缩放">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M13 7L7 13M13 11L11 13" />
+            </svg>
+          </div>
+        </article>
+
+        <!-- =======================================================
+             WIDGET 2: Editorial LRC Lyrics Card (Default 2x2)
+             ======================================================= -->
+        <article
+          class="widget-card paper-grain"
+          id="widget-lyrics"
+          data-size="2x2"
+          data-col="2"
+          data-row="0"
+          data-allowed-sizes="1x1,2x1,1x2,2x2"
+        >
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>
+          <div class="lyrics-card">
+            <div class="lyrics-scroll" id="lyricsScroll"></div>
+            <div class="lyrics-spotlight" id="lyricsSpotlight">
+              <span class="lyrics-spotlight-text" id="spotlightText">窗外细雨轻落，夜航船正待启程</span>
+            </div>
+          </div>
+          <div class="resize-handle" aria-label="拖动缩放">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M13 7L7 13M13 11L11 13" />
+            </svg>
+          </div>
+        </article>
+
+        <!-- =======================================================
+             WIDGET 3: Tactile Note Card (Default 2x1)
+             ======================================================= -->
+        <article
+          class="widget-card paper-grain"
+          id="widget-note"
+          data-size="2x1"
+          data-col="0"
+          data-row="2"
+          data-allowed-sizes="1x1,2x1,2x2"
+        >
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>
+          <div class="washi-tape" aria-hidden="true"></div>
+          <div class="note-card">
+            <div class="note-header">
+              <h2 class="note-title">创作手记</h2>
+              <span class="note-date">2026.11</span>
+            </div>
+            <div class="note-body">
+              <p>
+                这首歌的副歌部分录于一个下着细雨的深夜。我们在棚里关掉了所有指示灯，刻意把窗外屋檐滴落的雨声采样留在了电钢琴底噪里。
+              </p>
+              <div class="note-extended">
+                <p>
+                  Fmaj7 到 Cmaj7 的下行和弦像船身轻轻荡过水面。希望你拨动唱针、或在词句间停留时，都能感受到一种慢下来的实体温度——音乐不只是时间轴，更是一张可以摊开在桌面上的夜色地图。
+                </p>
+              </div>
+              <div class="note-signature">—— 晚风电台</div>
+            </div>
+            <div class="note-pullquote">
+              <span class="note-pullquote-mark">“</span>
+              <p class="note-pullquote-text">刻意保留了窗外的雨声采样，让和弦像夜航船一样轻轻荡过水面。</p>
+            </div>
+          </div>
+          <div class="resize-handle" aria-label="拖动缩放">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M13 7L7 13M13 11L11 13" />
+            </svg>
+          </div>
+        </article>
+
+        <!-- =======================================================
+             WIDGET 4: MV Visual Canvas (Default 2x1)
+             ======================================================= -->
+        <article
+          class="widget-card dark-chrome"
+          id="widget-mv"
+          data-size="2x1"
+          data-col="2"
+          data-row="2"
+          data-allowed-sizes="2x1,2x2"
+        >
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>
+          <div class="mv-card" id="mvCard">
+            <canvas class="mv-canvas" id="mvCanvas"></canvas>
+            <div class="mv-overlay-bottom">
+              <span class="mv-caption-title">雨夜渡口</span>
+              <div class="mv-progress-track">
+                <div class="mv-progress-fill" id="mvProgressFill"></div>
+              </div>
+            </div>
+          </div>
+          <div class="resize-handle" aria-label="拖动缩放">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M13 7L7 13M13 11L11 13" />
+            </svg>
+          </div>
+        </article>
+
+        <!-- =======================================================
+             WIDGET 5: Editorial Media Image Card (Default 1x1)
+             ======================================================= -->
+        <article
+          class="widget-card dark-chrome"
+          id="widget-image"
+          data-size="1x1"
+          data-col="0"
+          data-row="3"
+          data-allowed-sizes="1x1,1x2,2x1,2x2"
+        >
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>
+          <div class="image-card" id="imageCard">
+            <svg
+              class="image-artwork"
+              viewBox="0 0 600 600"
+              preserveAspectRatio="xMidYMid slice"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#191627" />
+                  <stop offset="55%" stop-color="#2E2642" />
+                  <stop offset="100%" stop-color="#4A3D5E" />
+                </linearGradient>
+                <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#F8F2F5" stop-opacity="0.95" />
+                  <stop offset="35%" stop-color="#DDD4ED" stop-opacity="0.45" />
+                  <stop offset="100%" stop-color="#DDD4ED" stop-opacity="0" />
+                </radialGradient>
+                <linearGradient id="riverWater" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2B243B" />
+                  <stop offset="100%" stop-color="#12101A" />
+                </linearGradient>
+                <radialGradient id="lanternGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#FFE6A7" stop-opacity="1" />
+                  <stop offset="45%" stop-color="#F6B96E" stop-opacity="0.5" />
+                  <stop offset="100%" stop-color="#F6B96E" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <rect width="600" height="390" fill="url(#nightSky)" />
+              <g fill="#F8F2F5" opacity="0.65">
+                <circle cx="95" cy="82" r="1.6" />
+                <circle cx="172" cy="54" r="1.2" />
+                <circle cx="480" cy="70" r="1.8" />
+                <circle cx="520" cy="140" r="1.2" />
+                <circle cx="120" cy="175" r="1.1" />
+                <circle cx="420" cy="120" r="1.4" />
+              </g>
+              <circle cx="315" cy="165" r="135" fill="url(#moonGlow)" />
+              <circle cx="315" cy="165" r="46" fill="#F8F2F5" />
+              <path d="M0 360 Q140 270 290 335 T600 325 L600 390 L0 390 Z" fill="#231D33" opacity="0.8" />
+              <path d="M0 375 Q190 315 380 365 T600 350 L600 390 L0 390 Z" fill="#1B1628" />
+              <rect y="385" width="600" height="215" fill="url(#riverWater)" />
+              <g fill="#DDD4ED" opacity="0.28">
+                <rect x="275" y="405" width="80" height="4" rx="2" />
+                <rect x="260" y="422" width="110" height="3.5" rx="2" />
+                <rect x="285" y="440" width="62" height="3" rx="2" />
+                <rect x="270" y="462" width="88" height="2.5" rx="2" />
+                <rect x="292" y="486" width="44" height="2" rx="2" />
+              </g>
+              <g transform="translate(170, 350)">
+                <path d="M18 38 L226 38 L206 60 L38 60 Z" fill="#121018" />
+                <path d="M72 38 L86 12 L168 12 L180 38 Z" fill="#1A1624" />
+                <rect x="104" y="20" width="22" height="12" rx="2" fill="#FFD98E" opacity="0.9" />
+                <rect x="134" y="20" width="22" height="12" rx="2" fill="#FFD98E" opacity="0.75" />
+                <line x1="210" y1="38" x2="218" y2="10" stroke="#121018" stroke-width="2.5" />
+                <circle cx="218" cy="18" r="28" fill="url(#lanternGlow)" />
+                <circle cx="218" cy="18" r="4.5" fill="#FFF3D1" />
+              </g>
+              <g fill="#F6B96E" opacity="0.32">
+                <rect x="374" y="416" width="28" height="3" rx="1.5" />
+                <rect x="368" y="432" width="38" height="2.5" rx="1.5" />
+                <rect x="378" y="450" width="18" height="2" rx="1" />
+              </g>
+            </svg>
+            <div class="image-caption">
+              <span class="image-caption-title">封面原画</span>
+            </div>
+          </div>
+          <div class="resize-handle" aria-label="拖动缩放">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M13 7L7 13M13 11L11 13" />
+            </svg>
+          </div>
+        </article>
+
+      </section>
+    </div>
+  </main>
+
+  <!-- Lightbox Modal -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span id="modalTitle">夜航船</span>
+        <button class="modal-close" id="modalCloseBtn" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =========================================================
+         1. Track Metadata & Lyrics
+         ========================================================= */
+      const TRACK_DURATION = 60.0;
+
+      const LYRICS_DATA = [
+        { time: 0.0,  text: '窗外细雨轻落，夜航船正待启程' },
+        { time: 4.0,  text: '岸边最后一盏暖灯，映着微凉的晚风' },
+        { time: 8.0,  text: '电钢琴在黑胶纹路里，慢慢漾开波纹' },
+        { time: 12.0, text: '把白昼未说完的心事，折进纸页夹层' },
+        { time: 16.0, text: '我们沿着月色的倒影，驶向寂静深处' },
+        { time: 20.0, text: '水面晃动着紫色薄雾，时间放慢脚步' },
+        { time: 24.0, text: '雨滴敲打着船篷，像一首旧日的节拍' },
+        { time: 28.0, text: '每一句轻声的回响，都在夜色里盛开' },
+        { time: 32.0, text: '唱针滑过温柔的弧线，带走尘埃与喧嚣' },
+        { time: 36.0, text: '远方渡口的钟声低鸣，指引迷途的归鸟' },
+        { time: 40.0, text: '不必急着抵达黎明，此刻就足够动人' },
+        { time: 44.0, text: '在微弱而笃定的光里，听见彼此的呼吸声' },
+        { time: 48.0, text: '夜航船穿过长长的雨幕，留下银色的航迹' },
+        { time: 52.0, text: '旋律在空气中轻轻盘旋，将这一刻小心铭记' },
+        { time: 56.0, text: '待下一阵晚风吹起，我们再从头听一遍' }
+      ];
+
+      /* =========================================================
+         2. Web Audio API Lo-Fi Synthesizer & Analyser
+         ========================================================= */
+      class AudioSyncEngine {
+        constructor(duration) {
+          this.duration = duration;
+          this.isPlaying = false;
+          this.currentTime = 0;
+          this.lastFrameTs = 0;
+
+          this.ctx = null;
+          this.masterGain = null;
+          this.analyser = null;
+          this.freqData = null;
+          this.rainGain = null;
+
+          this.lastScheduledStep = -1;
+          this.smoothedEnergy = 0;
+
+          this.chords = [
+            [174.61, 220.00, 261.63, 329.63],
+            [164.81, 196.00, 246.94, 293.66],
+            [146.83, 174.61, 220.00, 261.63],
+            [130.81, 164.81, 196.00, 246.94]
+          ];
+          this.melodyPool = [523.25, 587.33, 659.25, 783.99, 880.00, 493.88];
+        }
+
+        initAudioContext() {
+          if (this.ctx) return;
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+
+          this.ctx = new AudioCtx();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.value = 0.72;
+
+          this.analyser = this.ctx.createAnalyser();
+          this.analyser.fftSize = 256;
+          this.analyser.smoothingTimeConstant = 0.82;
+          this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
+
+          this.masterGain.connect(this.analyser);
+          this.analyser.connect(this.ctx.destination);
+          this.setupRainNoise();
+        }
+
+        setupRainNoise() {
+          if (!this.ctx) return;
+          const bufferSize = this.ctx.sampleRate * 3;
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          let b0 = 0, b1 = 0, b2 = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.997 * b0 + white * 0.029;
+            b1 = 0.985 * b1 + white * 0.032;
+            b2 = 0.950 * b2 + white * 0.048;
+            data[i] = (b0 + b1 + b2 + white * 0.015) * 0.35;
+          }
+
+          const src = this.ctx.createBufferSource();
+          src.buffer = buffer;
+          src.loop = true;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = 880;
+          filter.Q.value = 0.6;
+
+          this.rainGain = this.ctx.createGain();
+          this.rainGain.gain.value = 0.0001;
+
+          src.connect(filter);
+          filter.connect(this.rainGain);
+          this.rainGain.connect(this.masterGain);
+          src.start();
+        }
+
+        triggerElectricPianoChord(notes, durationSec = 3.8) {
+          if (!this.ctx || !this.isPlaying || !Array.isArray(notes)) return;
+          const now = this.ctx.currentTime;
+
+          notes.forEach((freq, idx) => {
+            if (!Number.isFinite(freq) || freq <= 0) return;
+            const osc = this.ctx.createOscillator();
+            const overtone = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const env = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            overtone.type = 'sine';
+            overtone.frequency.value = freq * 2;
+            overtone.detune.value = idx % 2 === 0 ? 4 : -4;
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1400, now);
+            filter.frequency.exponentialRampToValueAtTime(520, now + durationSec);
+
+            const startOffset = idx * 0.045;
+            env.gain.setValueAtTime(0.0001, now + startOffset);
+            env.gain.linearRampToValueAtTime(0.11, now + startOffset + 0.09);
+            env.gain.exponentialRampToValueAtTime(0.0008, now + startOffset + durationSec);
+
+            const overtoneGain = this.ctx.createGain();
+            overtoneGain.gain.value = 0.18;
+
+            osc.connect(filter);
+            overtone.connect(overtoneGain);
+            overtoneGain.connect(filter);
+            filter.connect(env);
+            env.connect(this.masterGain);
+
+            osc.start(now + startOffset);
+            overtone.start(now + startOffset);
+            osc.stop(now + startOffset + durationSec + 0.1);
+            overtone.stop(now + startOffset + durationSec + 0.1);
+          });
+        }
+
+        triggerBellNote(freq) {
+          if (!this.ctx || !this.isPlaying || !Number.isFinite(freq) || freq <= 0) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const env = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+
+          env.gain.setValueAtTime(0.0001, now);
+          env.gain.linearRampToValueAtTime(0.065, now + 0.03);
+          env.gain.exponentialRampToValueAtTime(0.0005, now + 1.8);
+
+          osc.connect(env);
+          env.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 1.9);
+        }
+
+        play() {
+          try {
+            this.initAudioContext();
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume();
+            }
+          } catch (e) {
+            console.warn('Web Audio init skipped:', e);
+          }
+
+          this.isPlaying = true;
+          this.lastFrameTs = performance.now();
+          this.lastScheduledStep = -1;
+
+          if (this.rainGain && this.ctx) {
+            this.rainGain.gain.cancelScheduledValues(this.ctx.currentTime);
+            this.rainGain.gain.setTargetAtTime(0.14, this.ctx.currentTime, 0.35);
+          }
+
+          const currentBar = Math.floor(this.currentTime / 4) % 4;
+          this.triggerElectricPianoChord(this.chords[currentBar], 3.7);
+          this.lastScheduledStep = Math.floor(this.currentTime / 2);
+        }
+
+        pause() {
+          this.isPlaying = false;
+          if (this.rainGain && this.ctx) {
+            this.rainGain.gain.cancelScheduledValues(this.ctx.currentTime);
+            this.rainGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.25);
+          }
+        }
+
+        toggle() {
+          this.isPlaying ? this.pause() : this.play();
+        }
+
+        seek(seconds, autoPlay = false) {
+          if (!Number.isFinite(seconds)) return;
+          this.currentTime = ((seconds % this.duration) + this.duration) % this.duration;
+          this.lastScheduledStep = Math.floor(this.currentTime / 2);
+          if (autoPlay && !this.isPlaying) {
+            this.play();
+          } else if (this.isPlaying) {
+            const bar = ((Math.floor(this.currentTime / 4) % this.chords.length) + this.chords.length) % this.chords.length;
+            this.triggerElectricPianoChord(this.chords[bar], 3.5);
+          }
+        }
+
+        tick(nowTs) {
+          if (this.isPlaying) {
+            // 首帧 / 标签页恢复时 lastFrameTs 可能很旧，dt 必须夹住
+            const rawDt = Number.isFinite(nowTs) && this.lastFrameTs > 0
+              ? (nowTs - this.lastFrameTs) / 1000
+              : 0;
+            const dt = Math.max(0, Math.min(rawDt, 0.1));
+            this.currentTime = (((this.currentTime + dt) % this.duration) + this.duration) % this.duration;
+
+            const step = Math.floor(this.currentTime / 2);
+            if (step !== this.lastScheduledStep) {
+              this.lastScheduledStep = step;
+              const chordIndex = ((Math.floor(step / 2) % this.chords.length) + this.chords.length) % this.chords.length;
+              const melodyIndex = (((step * 3) % this.melodyPool.length) + this.melodyPool.length) % this.melodyPool.length;
+
+              if (step % 2 === 0) {
+                this.triggerElectricPianoChord(this.chords[chordIndex], 3.85);
+              } else {
+                this.triggerBellNote(this.melodyPool[melodyIndex]);
+              }
+            }
+          }
+          if (Number.isFinite(nowTs)) {
+            this.lastFrameTs = nowTs;
+          }
+
+          let rawEnergy = 0;
+          if (this.isPlaying && this.analyser && this.freqData) {
+            this.analyser.getByteFrequencyData(this.freqData);
+            let sum = 0;
+            const bins = 24;
+            for (let i = 0; i < bins; i++) sum += this.freqData[i];
+            rawEnergy = Math.min(1, (sum / (bins * 255)) * 2.1);
+          }
+          this.smoothedEnergy += (rawEnergy - this.smoothedEnergy) * 0.14;
+          return this.smoothedEnergy;
+        }
+      }
+
+      const engine = new AudioSyncEngine(TRACK_DURATION);
+
+      /* =========================================================
+         3. DOM References
+         ========================================================= */
+      const rootEl = document.documentElement;
+      const headerPlayBtn = document.getElementById('headerPlayBtn');
+      const headerPlayIcon = document.getElementById('headerPlayIcon');
+      const headerTimecode = document.getElementById('headerTimecode');
+
+      const btnReturnCentroid = document.getElementById('btnReturnCentroid');
+
+      const canvasViewport = document.getElementById('canvasViewport');
+      const canvasWorld = document.getElementById('canvasWorld');
+      const spatialGrid = document.getElementById('spatialGrid');
+      const resizePreviewGhost = document.getElementById('resizePreviewGhost');
+
+      const vinylDisc = document.getElementById('vinylDisc');
+      const vinylPlayBtn = document.getElementById('vinylPlayBtn');
+      const vinylPlayIcon = document.getElementById('vinylPlayIcon');
+      const vinylOverlayPlay = document.getElementById('vinylOverlayPlay');
+      const overlayPlayIcon = document.getElementById('overlayPlayIcon');
+      const tonearmPivot = document.getElementById('tonearmPivot');
+      const masterSeekSlider = document.getElementById('masterSeekSlider');
+      const playerCurrentTime = document.getElementById('playerCurrentTime');
+
+      const lyricsScroll = document.getElementById('lyricsScroll');
+      const spotlightText = document.getElementById('spotlightText');
+      const lyricsSpotlight = document.getElementById('lyricsSpotlight');
+
+      const mvCard = document.getElementById('mvCard');
+      const mvCanvas = document.getElementById('mvCanvas');
+      const mvProgressFill = document.getElementById('mvProgressFill');
+
+      const imageCard = document.getElementById('imageCard');
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+      /* =========================================================
+         4. Infinite Canvas Camera & Centroid Engine
+         ========================================================= */
+      let camX = 0;
+      let camY = 0;
+      let camScale = 1;
+      const MIN_SCALE = 0.15;
+      const MAX_SCALE = 1.8;
+      const DOT_GRID_STEP = 28;
+      const FIT_PADDING = 32;
+
+      let cameraAnimRaf = null;
+      let isSpacePressed = false;
+      let panState = null;
+
+      function clampScale(value) {
+        return Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+      }
+
+      function getViewportRect() {
+        return canvasViewport.getBoundingClientRect();
+      }
+
+      // 缩放 / 平移与「缩放手柄拖动」「卡片重排拖动」互斥，避免同一指针下两套状态机打架
+      function isCameraBusy() {
+        return Boolean(activeResize) || Boolean(dragState);
+      }
+
+      function applyCameraTransform() {
+        canvasWorld.style.transform = `translate3d(${camX.toFixed(2)}px, ${camY.toFixed(2)}px, 0) scale(${camScale.toFixed(4)})`;
+        canvasViewport.style.setProperty('--cam-scale', camScale.toFixed(4));
+        const scaledStep = DOT_GRID_STEP * camScale;
+        canvasViewport.style.backgroundSize = `${scaledStep.toFixed(2)}px ${scaledStep.toFixed(2)}px`;
+        canvasViewport.style.backgroundPosition = `${camX.toFixed(2)}px ${camY.toFixed(2)}px`;
+      }
+
+      function cancelCameraAnimation() {
+        if (cameraAnimRaf) {
+          cancelAnimationFrame(cameraAnimRaf);
+          cameraAnimRaf = null;
+        }
+      }
+
+      function animateCameraTo(targetX, targetY, targetScale, duration) {
+        cancelCameraAnimation();
+
+        const tx = Number.isFinite(targetX) ? targetX : camX;
+        const ty = Number.isFinite(targetY) ? targetY : camY;
+        const ts = Number.isFinite(targetScale) ? targetScale : camScale;
+
+        if (!(duration > 0)) {
+          camX = tx;
+          camY = ty;
+          camScale = ts;
+          applyCameraTransform();
+          return;
+        }
+
+        const startX = camX;
+        const startY = camY;
+        const startScale = camScale;
+        const startTime = performance.now();
+
+        function easeOutCubic(t) {
+          return 1 - Math.pow(1 - t, 3);
+        }
+
+        function step(now) {
+          const t = Math.min(1, (now - startTime) / duration);
+          const e = easeOutCubic(t);
+          camX = startX + (tx - startX) * e;
+          camY = startY + (ty - startY) * e;
+          camScale = startScale + (ts - startScale) * e;
+          applyCameraTransform();
+
+          cameraAnimRaf = t < 1 ? requestAnimationFrame(step) : null;
+        }
+
+        cameraAnimRaf = requestAnimationFrame(step);
+      }
+
+      /**
+       * 以「世界坐标」测量所有卡片的外接矩形。
+       * 用 offsetLeft/offsetTop（布局位置）而不是 getBoundingClientRect():
+       * 后者会被相机缩放、FLIP 补间、拖拽中的 fixed 卡片污染，导致「回到质心」算偏。
+       */
+      function getWorldBounds() {
+        const cards = Array.from(spatialGrid.querySelectorAll('.widget-card')).filter(
+          (card) => !card.classList.contains('is-lifted')
+        );
+        if (cards.length === 0) return null;
+
+        const gridX = spatialGrid.offsetLeft;
+        const gridY = spatialGrid.offsetTop;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        cards.forEach((card) => {
+          const x = gridX + card.offsetLeft;
+          const y = gridY + card.offsetTop;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x + card.offsetWidth > maxX) maxX = x + card.offsetWidth;
+          if (y + card.offsetHeight > maxY) maxY = y + card.offsetHeight;
+        });
+
+        if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+
+        return {
+          minX,
+          minY,
+          maxX,
+          maxY,
+          width: Math.max(1, maxX - minX),
+          height: Math.max(1, maxY - minY)
+        };
+      }
+
+      /**
+       * 把全部卡片框进视口：以内容外接矩形居中，并按可用空间自适应缩放（最大 1）。
+       * 之前的实现固定 scale = 1，小窗口下会把卡片顶出屏幕。
+       */
+      function returnToCentroid(animateDuration = 500) {
+        if (isCameraBusy()) return;
+
+        const bounds = getWorldBounds();
+        if (!bounds) return;
+
+        const vp = getViewportRect();
+        const headerRect = document.querySelector('.floating-header').getBoundingClientRect();
+        // 顶部为悬浮 header 让位；header 换行时高度变化会自然生效
+        const topInset = Math.max(0, headerRect.bottom - vp.top) + FIT_PADDING;
+        const availW = Math.max(160, vp.width - FIT_PADDING * 2);
+        const availH = Math.max(160, vp.height - topInset - FIT_PADDING);
+
+        const targetScale = clampScale(
+          Math.min(1, availW / bounds.width, availH / bounds.height)
+        );
+        const cx = (bounds.minX + bounds.maxX) / 2;
+        const cy = (bounds.minY + bounds.maxY) / 2;
+        // 相机 translate 是相对画布视口原点的，所以这里也用视口内坐标（vp.left/top 作为基准）
+        const targetX = vp.width / 2 - cx * targetScale;
+        const targetY = topInset + availH / 2 - cy * targetScale;
+
+        animateCameraTo(targetX, targetY, targetScale, animateDuration);
+      }
+
+      /**
+       * 首屏镜头：桌面看全景；窄屏/触摸设备把第一张卡（唱片）放到可读尺寸，
+       * 用户再单指平移、双指缩放探索整张画布。“回到质心”始终是看全景。
+       */
+      function focusInitialView() {
+        const vp = getViewportRect();
+        const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        if (vp.width > 768 && !coarse) {
+          returnToCentroid(0);
+          return;
+        }
+
+        const first = spatialGrid.querySelector('.widget-card');
+        if (!first) return;
+
+        const headerRect = document.querySelector('.floating-header').getBoundingClientRect();
+        const topInset = Math.max(0, headerRect.bottom - vp.top) + FIT_PADDING;
+        const availW = Math.max(160, vp.width - FIT_PADDING * 2);
+        const availH = Math.max(160, vp.height - topInset - FIT_PADDING);
+
+        const rect = {
+          left: first.offsetLeft,
+          top: first.offsetTop,
+          width: first.offsetWidth,
+          height: first.offsetHeight
+        };
+        const targetScale = clampScale(Math.min(0.72, availW / rect.width, availH / rect.height));
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        // 首屏把主卡贴近 header 下方，下面的卡片也能露出来；横向居中
+        animateCameraTo(
+          vp.width / 2 - cx * targetScale,
+          topInset + 8 - rect.top * targetScale,
+          targetScale,
+          0
+        );
+      }
+
+      btnReturnCentroid.addEventListener('click', () => returnToCentroid(500));
+
+      /* ---------- Space 键：平移修饰符 ---------- */
+      function isTypingTarget(el) {
+        if (!el) return false;
+        if (el.isContentEditable === true) return true;
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+        if (el.tagName !== 'INPUT') return false;
+        // 只有「文本类」输入才需要保留 Space；range/checkbox 等聚焦时仍允许 Space 平移
+        const type = (el.type || 'text').toLowerCase();
+        return !['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file'].includes(type);
+      }
+
+      function isButtonLike(el) {
+        return Boolean(el && (el.tagName === 'BUTTON' || el.tagName === 'A'));
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code !== 'Space' || e.repeat) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        // 输入框 / 获得焦点的按钮保留 Space 的默认语义，不要抢成平移
+        if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+        if (isButtonLike(document.activeElement)) return;
+        if (modalBackdrop.classList.contains('open')) return;
+
+        // 阻止 Space 的默认滚动，否则拖到一半页面会跟着滚
+        e.preventDefault();
+        isSpacePressed = true;
+        canvasViewport.classList.add('space-ready');
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code !== 'Space') return;
+        isSpacePressed = false;
+        canvasViewport.classList.remove('space-ready');
+      });
+
+      // 平移：空白处左键拖拽 / Space + 左键 / 中键拖拽
+      canvasViewport.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return; // 触摸手势走 window 层的 touch 状态机
+        if (isCameraBusy()) return;
+        if (panState) return; // 已有指针在平移，忽略第二个指针，避免抢状态
+
+        const isMiddleBtn = e.button === 1;
+        const isLeftBtn = e.button === 0;
+        const onCard = Boolean(e.target.closest && e.target.closest('.widget-card'));
+
+        // 右键、普通左键点卡片等都不应触发平移（原实现里右键也会开始平移并吞掉菜单）
+        if (!isMiddleBtn && !(isLeftBtn && (isSpacePressed || !onCard))) return;
+
+        e.preventDefault();
+        cancelCameraAnimation();
+        panState = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          originCamX: camX,
+          originCamY: camY,
+          moved: false
+        };
+        canvasViewport.classList.add('is-panning');
+        try { canvasViewport.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      canvasViewport.addEventListener('pointermove', (e) => {
+        if (!panState || e.pointerId !== panState.pointerId) return;
+        // 鼠标键已经松开（pointerup 丢在窗口外时）主动收尾，避免“悬停也在平移”
+        if (e.pointerType === 'mouse' && e.buttons === 0) {
+          endPan(e);
+          return;
+        }
+        camX = panState.originCamX + (e.clientX - panState.startX);
+        camY = panState.originCamY + (e.clientY - panState.startY);
+        if (
+          !panState.moved &&
+          (Math.abs(e.clientX - panState.startX) > 3 || Math.abs(e.clientY - panState.startY) > 3)
+        ) {
+          panState.moved = true;
+        }
+        applyCameraTransform();
+      });
+
+      // 平移结束后浏览器仍会补发一次 click；若不吞掉，Space+拖拽会让被拖过的卡片误触点击
+      let suppressClickUntil = 0;
+
+      function endPan(e) {
+        if (!panState) return;
+        if (e && e.pointerId != null && e.pointerId !== panState.pointerId) return;
+
+        const { pointerId, moved } = panState;
+        panState = null;
+        canvasViewport.classList.remove('is-panning');
+        if (moved) suppressClickUntil = performance.now() + 120;
+        try {
+          if (canvasViewport.hasPointerCapture(pointerId)) {
+            canvasViewport.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+      }
+
+      window.addEventListener('click', (e) => {
+        if (performance.now() > suppressClickUntil) return;
+        // 只吞画布区域内补发的 click；header / 弹层上的真实点击不受影响
+        const el = e.target;
+        if (!el || !el.closest || !el.closest('.canvas-viewport')) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      canvasViewport.addEventListener('pointerup', endPan);
+      canvasViewport.addEventListener('pointercancel', endPan);
+      canvasViewport.addEventListener('lostpointercapture', endPan);
+      // 兜底：指针在画布外释放 / 窗口失焦 / 指针被系统取消时，状态也必须出去
+      window.addEventListener('pointerup', endPan);
+      window.addEventListener('pointercancel', endPan);
+      window.addEventListener('blur', () => {
+        isSpacePressed = false;
+        canvasViewport.classList.remove('space-ready');
+        endPan(null);
+      });
+      canvasViewport.addEventListener('auxclick', (e) => {
+        if (e.button === 1) e.preventDefault(); // 阻止中键自动滚动
+      });
+
+      // Wheel: Ctrl/Cmd + wheel zooms anchored to cursor; regular wheel/trackpad pans
+      canvasViewport.addEventListener('wheel', (e) => {
+        // Allow inner scrollable areas (lyrics / note body) to scroll normally unless zooming
+        const isZoomGesture = e.ctrlKey || e.metaKey;
+        const scrollable = e.target.closest('.lyrics-scroll, .note-body');
+        if (scrollable && !isZoomGesture) {
+          const canScrollY = scrollable.scrollHeight > scrollable.clientHeight + 2;
+          if (canScrollY) return;
+        }
+
+        // 缩放 / 重排拖动期间冻结相机，避免预览框与手势参考系错位
+        if (isCameraBusy()) {
+          e.preventDefault();
+          return;
+        }
+
+        // 归一化 deltaMode：Firefox 鼠标滚轮是「行」单位，不换算会几乎滚不动
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? getViewportRect().height : 1;
+        const dx = e.deltaX * unit;
+        const dy = e.deltaY * unit;
+        if (!dx && !dy) return;
+
+        e.preventDefault();
+        cancelCameraAnimation();
+        if (panState) endPan(null); // 滚轮与指针平移不叠加
+
+        if (isZoomGesture) {
+          const nextScale = clampScale(camScale * Math.exp(-dy * 0.0045));
+          if (nextScale !== camScale) {
+            const vp = getViewportRect();
+            const px = e.clientX - vp.left;
+            const py = e.clientY - vp.top;
+            const ratio = nextScale / camScale;
+
+            // 保持光标下的世界坐标点不动
+            camX = px - (px - camX) * ratio;
+            camY = py - (py - camY) * ratio;
+            camScale = nextScale;
+          }
+        } else {
+          camX -= dx;
+          camY -= dy;
+        }
+
+        applyCameraTransform();
+      }, { passive: false });
+
+      /* ---------- Touch Gestures: 单指平移 / 双指缩放 / 内部滚动 ---------- */
+      const touchPointers = new Map();
+      let touchGesture = null;
+      const TOUCH_TAP_SLOP = 6;
+      const TOUCH_SCROLL_SLOP = 6;
+      const TOUCH_SCROLL_HANDOFF = 14;
+
+      function isTouchControlTarget(el) {
+        if (!el || !el.closest) return false;
+        return Boolean(
+          el.closest(
+            'input, button, a, select, textarea, [contenteditable="true"], .resize-handle, .tonearm-pivot'
+          )
+        );
+      }
+
+      function getTouchScrollable(el) {
+        if (!el || !el.closest) return null;
+        const node = el.closest('.lyrics-scroll, .note-body');
+        if (!node) return null;
+        return node.scrollHeight > node.clientHeight + 2 ? node : null;
+      }
+
+      function stopTouchGesture() {
+        if (!touchGesture) return;
+        if (touchGesture.mode === 'scroll' && touchGesture.el) {
+          touchGesture.el.style.scrollBehavior = touchGesture.prevScrollBehavior || '';
+        }
+        touchGesture = null;
+        canvasViewport.classList.remove('is-panning');
+      }
+
+      function startTouchPan(pointerId, clientX, clientY) {
+        touchGesture = {
+          mode: 'pan',
+          pointerId,
+          startX: clientX,
+          startY: clientY,
+          originCamX: camX,
+          originCamY: camY,
+          moved: false
+        };
+      }
+
+      function startTouchPinch() {
+        const ids = Array.from(touchPointers.keys()).slice(0, 2);
+        if (ids.length < 2) return;
+        const a = touchPointers.get(ids[0]);
+        const b = touchPointers.get(ids[1]);
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+        const vp = getViewportRect();
+        cancelCameraAnimation();
+        stopTouchGesture();
+        touchGesture = {
+          mode: 'pinch',
+          ids,
+          startDist: dist,
+          startScale: camScale,
+          anchorX: (midX - vp.left - camX) / camScale,
+          anchorY: (midY - vp.top - camY) / camScale,
+          moved: false
+        };
+      }
+
+      function updateTouchPinch() {
+        const g = touchGesture;
+        const a = touchPointers.get(g.ids[0]);
+        const b = touchPointers.get(g.ids[1]);
+        if (!a || !b) return;
+        const vp = getViewportRect();
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+        const nextScale = clampScale(g.startScale * (dist / g.startDist));
+        camScale = nextScale;
+        camX = midX - vp.left - g.anchorX * nextScale;
+        camY = midY - vp.top - g.anchorY * nextScale;
+        g.moved = true;
+        applyCameraTransform();
+      }
+
+      function onTouchPointerDown(e) {
+        if (e.pointerType !== 'touch') return;
+        if (!canvasViewport.contains(e.target)) return; // header / modal
+        if (modalBackdrop.classList.contains('open')) return;
+        if (activeResize || isDraggingTonearm) return;
+        if (dragState && dragState.phase !== 'pending') return;
+
+        touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        // 第二根手指 → 双指缩放，接管已经开始的单指平移/滚动
+        if (touchPointers.size >= 2) {
+          if (touchGesture && touchGesture.mode !== 'pinch') {
+            if (dragState && dragState.phase === 'pending') cancelPendingDrag();
+            startTouchPinch();
+          }
+          return;
+        }
+
+        // 任何触摸手势都先停掉相机补间，避免镜头一边飞一边被拖
+        cancelCameraAnimation();
+
+        // 按钮、slider 等控件把触摸留给它们自己
+        if (isTouchControlTarget(e.target)) return;
+
+        const scrollable = getTouchScrollable(e.target);
+        if (scrollable) {
+          touchGesture = {
+            mode: 'scroll',
+            pointerId: e.pointerId,
+            el: scrollable,
+            startX: e.clientX,
+            startY: e.clientY,
+            startScrollTop: scrollable.scrollTop,
+            prevScrollBehavior: scrollable.style.scrollBehavior || '',
+            moved: false
+          };
+          scrollable.style.scrollBehavior = 'auto';
+          return;
+        }
+
+        cancelCameraAnimation();
+        startTouchPan(e.pointerId, e.clientX, e.clientY);
+      }
+
+      function onTouchPointerMove(e) {
+        if (e.pointerType !== 'touch') return;
+        const tracked = touchPointers.get(e.pointerId);
+        if (tracked) {
+          tracked.x = e.clientX;
+          tracked.y = e.clientY;
+        }
+        if (!tracked || !touchGesture) return;
+        if (activeResize || isDraggingTonearm) return;
+        if (dragState && dragState.phase !== 'pending') return;
+
+        const g = touchGesture;
+
+        if (g.mode === 'pinch') {
+          updateTouchPinch();
+          return;
+        }
+
+        if (g.mode === 'scroll') {
+          if (e.pointerId !== g.pointerId) return;
+          const dxScreen = e.clientX - g.startX;
+          const dyScreen = e.clientY - g.startY;
+
+          // 横向滑动优先给画布平移，内部列表只吃纵向手势
+          if (
+            Math.abs(dxScreen) > 12 &&
+            Math.abs(dxScreen) > Math.abs(dyScreen) * 1.2
+          ) {
+            g.el.style.scrollBehavior = g.prevScrollBehavior || '';
+            touchGesture = {
+              mode: 'pan',
+              pointerId: g.pointerId,
+              startX: e.clientX,
+              startY: e.clientY,
+              originCamX: camX,
+              originCamY: camY,
+              moved: true
+            };
+            return;
+          }
+
+          if (!g.moved && Math.abs(dyScreen) > TOUCH_SCROLL_SLOP) g.moved = true;
+          // 手指位移是屏幕 px，scrollTop 是卡片的 CSS px（世界单位），要除以相机缩放
+          const dy = dyScreen / camScale;
+
+          const maxScroll = Math.max(0, g.el.scrollHeight - g.el.clientHeight);
+          const next = g.startScrollTop - dy;
+          const overTop = next < 0 ? -next : 0;
+          const overBottom = next > maxScroll ? next - maxScroll : 0;
+
+          // 内部列表滑到头后继续拖动：无缝交接给画布平移
+          if (overTop * camScale > TOUCH_SCROLL_HANDOFF || overBottom * camScale > TOUCH_SCROLL_HANDOFF) {
+            g.el.style.scrollBehavior = g.prevScrollBehavior || '';
+            touchGesture = {
+              mode: 'pan',
+              pointerId: g.pointerId,
+              startX: e.clientX,
+              startY: e.clientY,
+              originCamX: camX,
+              originCamY: camY,
+              moved: true
+            };
+            return;
+          }
+
+          g.el.scrollTop = Math.max(0, Math.min(maxScroll, next));
+          return;
+        }
+
+        if (g.mode === 'pan') {
+          if (e.pointerId !== g.pointerId) return;
+          const dx = e.clientX - g.startX;
+          const dy = e.clientY - g.startY;
+          if (!g.moved) {
+            if (Math.hypot(dx, dy) <= TOUCH_TAP_SLOP) return;
+            // 越过阈值后从当前位置重锚，避免第一下跳一下
+            g.moved = true;
+            g.startX = e.clientX;
+            g.startY = e.clientY;
+            g.originCamX = camX;
+            g.originCamY = camY;
+            canvasViewport.classList.add('is-panning');
+          }
+          camX = g.originCamX + (e.clientX - g.startX);
+          camY = g.originCamY + (e.clientY - g.startY);
+          applyCameraTransform();
+        }
+      }
+
+      function onTouchPointerEnd(e, cancelled) {
+        if (e && e.pointerType !== 'touch') return;
+        if (e) touchPointers.delete(e.pointerId);
+        if (!touchGesture) return;
+
+        const g = touchGesture;
+
+        if (g.mode === 'pinch') {
+          // 第三根手指抬起不应打断双指手势
+          if (e && g.ids.indexOf(e.pointerId) === -1) return;
+          if (touchPointers.size === 1) {
+            // 双指变单指：从剩下那根手指继续平移，避免跳变
+            const entry = touchPointers.entries().next().value;
+            touchGesture = null;
+            startTouchPan(entry[0], entry[1].x, entry[1].y);
+            touchGesture.moved = true;
+          } else {
+            touchGesture = null;
+          }
+          canvasViewport.classList.remove('is-panning');
+          if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
+          return;
+        }
+
+        if (e && g.pointerId !== e.pointerId) return;
+
+        if (g.mode === 'scroll') {
+          g.el.style.scrollBehavior = g.prevScrollBehavior || '';
+        }
+        touchGesture = null;
+        canvasViewport.classList.remove('is-panning');
+        if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
+      }
+
+      window.addEventListener('pointerdown', onTouchPointerDown, { passive: true });
+      window.addEventListener('pointermove', onTouchPointerMove, { passive: true });
+      window.addEventListener('pointerup', (e) => onTouchPointerEnd(e, false), { passive: true });
+      window.addEventListener('pointercancel', (e) => onTouchPointerEnd(e, true), { passive: true });
+      window.addEventListener('blur', () => {
+        touchPointers.clear();
+        stopTouchGesture();
+      });
+
+      /* =========================================================
+         5. Edge Auto-Scrolling Engine (Resize & Reorder)
+         ========================================================= */
+      const EDGE_ZONE = 64;
+      const MAX_EDGE_SPEED = 14;
+      let edgeScrollRaf = null;
+      let lastPointerX = 0;
+      let lastPointerY = 0;
+
+      function startEdgeScrollLoop() {
+        if (edgeScrollRaf) return;
+        edgeScrollRaf = requestAnimationFrame(edgeScrollTick);
+      }
+
+      function stopEdgeScrollLoop() {
+        if (edgeScrollRaf) {
+          cancelAnimationFrame(edgeScrollRaf);
+          edgeScrollRaf = null;
+        }
+      }
+
+      function edgeScrollTick() {
+        const resizing = Boolean(activeResize);
+        const dragging = Boolean(dragState && dragState.phase === 'dragging');
+
+        if (!resizing && !dragging) {
+          edgeScrollRaf = null;
+          return;
+        }
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let vx = 0;
+        let vy = 0;
+
+        if (lastPointerX < EDGE_ZONE) {
+          vx = ((EDGE_ZONE - lastPointerX) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        } else if (lastPointerX > vw - EDGE_ZONE) {
+          vx = -((lastPointerX - (vw - EDGE_ZONE)) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        }
+
+        if (lastPointerY < EDGE_ZONE) {
+          vy = ((EDGE_ZONE - lastPointerY) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        } else if (lastPointerY > vh - EDGE_ZONE) {
+          vy = -((lastPointerY - (vh - EDGE_ZONE)) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        }
+
+        if (vx !== 0 || vy !== 0) {
+          camX += vx;
+          camY += vy;
+          applyCameraTransform();
+
+          if (resizing) updateResizePreview(lastPointerX, lastPointerY);
+          if (dragging) updateDragPositionAndHitTest(lastPointerX, lastPointerY);
+        }
+
+        edgeScrollRaf = requestAnimationFrame(edgeScrollTick);
+      }
+
+      /* =========================================================
+         6. Playback & Lyrics Sync
+         ========================================================= */
+      function formatTime(sec) {
+        const s = Math.max(0, Math.floor(sec));
+        const mm = String(Math.floor(s / 60)).padStart(2, '0');
+        const ss = String(s % 60).padStart(2, '0');
+        return `${mm}:${ss}`;
+      }
+
+      const PLAY_ICON_PATH = '<path d="M8 5v14l11-7z"/>';
+      const PAUSE_ICON_PATH = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+
+      function syncPlayStateUI() {
+        const playing = engine.isPlaying;
+        headerPlayBtn.classList.toggle('is-playing', playing);
+        headerPlayIcon.innerHTML = playing ? PAUSE_ICON_PATH : PLAY_ICON_PATH;
+        vinylPlayIcon.innerHTML = playing ? PAUSE_ICON_PATH : PLAY_ICON_PATH;
+        overlayPlayIcon.innerHTML = playing ? PAUSE_ICON_PATH : PLAY_ICON_PATH;
+        if (playing) ensureAnimationLoop();
+      }
+
+      let activeLyricIndex = -1;
+
+      function initLyrics() {
+        const frag = document.createDocumentFragment();
+        LYRICS_DATA.forEach((line, idx) => {
+          const div = document.createElement('div');
+          div.className = 'lyric-line';
+          div.dataset.index = idx;
+          div.textContent = line.text;
+          div.addEventListener('click', () => {
+            engine.seek(line.time, true);
+            syncPlayStateUI();
+            updateTimelineUI(true);
+          });
+          frag.appendChild(div);
+        });
+        lyricsScroll.appendChild(frag);
+      }
+
+      function updateActiveLyric(currentTime, forceScroll = false) {
+        let idx = 0;
+        for (let i = 0; i < LYRICS_DATA.length; i++) {
+          if (currentTime >= LYRICS_DATA[i].time) idx = i;
+          else break;
+        }
+
+        if (idx !== activeLyricIndex || forceScroll) {
+          activeLyricIndex = idx;
+          const nodes = lyricsScroll.querySelectorAll('.lyric-line');
+          nodes.forEach((el, i) => el.classList.toggle('active', i === idx));
+
+          const activeEl = nodes[idx];
+          if (activeEl) {
+            const targetTop =
+              activeEl.offsetTop - lyricsScroll.clientHeight / 2 + activeEl.clientHeight / 2;
+            lyricsScroll.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+          }
+          spotlightText.textContent = LYRICS_DATA[idx].text;
+        }
+      }
+
+      lyricsSpotlight.addEventListener('click', () => {
+        engine.toggle();
+        syncPlayStateUI();
+      });
+
+      /* =========================================================
+         7. Vinyl Inertia & Tonearm Pointer Dragging
+         ========================================================= */
+      let vinylAngle = 0;
+      let vinylVelocity = 0;
+      const TARGET_VINYL_VEL = 1.15;
+
+      let isDraggingTonearm = false;
+      let tonearmStartX = 0;
+      let tonearmStartProgress = 0;
+
+      function updateTonearmAngle(progress) {
+        if (!engine.isPlaying && progress === 0 && !isDraggingTonearm) {
+          tonearmPivot.style.transform = 'rotate(6deg)';
+          return;
+        }
+        const angle = 22 + progress * 21;
+        tonearmPivot.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+      }
+
+      tonearmPivot.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        isDraggingTonearm = true;
+        tonearmStartX = e.clientX;
+        tonearmStartProgress = engine.currentTime / TRACK_DURATION;
+        tonearmPivot.classList.add('dragging');
+        try { tonearmPivot.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      tonearmPivot.addEventListener('pointermove', (e) => {
+        if (!isDraggingTonearm) return;
+        const delta = (tonearmStartX - e.clientX) / (140 * camScale);
+        const nextProgress = Math.max(0, Math.min(0.995, tonearmStartProgress + delta));
+        engine.seek(nextProgress * TRACK_DURATION, false);
+        updateTimelineUI(true);
+      });
+
+      function endTonearmDrag(e) {
+        if (!isDraggingTonearm) return;
+        isDraggingTonearm = false;
+        tonearmPivot.classList.remove('dragging');
+        try {
+          if (e && tonearmPivot.hasPointerCapture(e.pointerId)) {
+            tonearmPivot.releasePointerCapture(e.pointerId);
+          }
+        } catch (_) {}
+        if (!engine.isPlaying) {
+          engine.play();
+          syncPlayStateUI();
+        }
+      }
+
+      tonearmPivot.addEventListener('pointerup', endTonearmDrag);
+      tonearmPivot.addEventListener('pointercancel', endTonearmDrag);
+
+      /* =========================================================
+         8. Procedural Nocturnal MV Canvas
+         ========================================================= */
+      class NocturnalMVRenderer {
+        constructor(canvas) {
+          this.canvas = canvas;
+          this.ctx = canvas.getContext('2d');
+          this.width = 300;
+          this.height = 180;
+          this.raindrops = Array.from({ length: 42 }, () => ({
+            x: Math.random(),
+            y: Math.random(),
+            len: 0.04 + Math.random() * 0.06,
+            speed: 0.35 + Math.random() * 0.45
+          }));
+          this.ripples = Array.from({ length: 6 }, (_, i) => ({
+            x: 0.15 + Math.random() * 0.7,
+            y: 0.62 + Math.random() * 0.3,
+            phase: i / 6
+          }));
+          this.resize();
+        }
+
+        resize() {
+          const rect = this.canvas.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return;
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          this.width = rect.width;
+          this.height = rect.height;
+          this.canvas.width = Math.round(rect.width * dpr);
+          this.canvas.height = Math.round(rect.height * dpr);
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        render(timeSec, energy) {
+          const ctx = this.ctx;
+          const w = this.width;
+          const h = this.height;
+          if (w <= 0 || h <= 0) return;
+
+          const horizon = h * 0.56;
+
+          const skyGrad = ctx.createLinearGradient(0, 0, 0, horizon);
+          skyGrad.addColorStop(0, '#13111C');
+          skyGrad.addColorStop(1, '#2D2540');
+          ctx.fillStyle = skyGrad;
+          ctx.fillRect(0, 0, w, horizon);
+
+          const waterGrad = ctx.createLinearGradient(0, horizon, 0, h);
+          waterGrad.addColorStop(0, '#231D33');
+          waterGrad.addColorStop(1, '#0E0C14');
+          ctx.fillStyle = waterGrad;
+          ctx.fillRect(0, horizon, w, h - horizon);
+
+          const moonX = w * 0.72;
+          const moonY = horizon * 0.44;
+          const haloR = Math.min(w, h) * (0.34 + energy * 0.12);
+          const moonHalo = ctx.createRadialGradient(moonX, moonY, 4, moonX, moonY, haloR);
+          moonHalo.addColorStop(0, 'rgba(248, 242, 245, 0.85)');
+          moonHalo.addColorStop(0.35, `rgba(221, 212, 237, ${0.26 + energy * 0.2})`);
+          moonHalo.addColorStop(1, 'rgba(221, 212, 237, 0)');
+          ctx.fillStyle = moonHalo;
+          ctx.beginPath();
+          ctx.arc(moonX, moonY, haloR, 0, Math.PI * 2);
+          ctx.fill();
+
+          const lanternX = w * (0.28 + Math.sin(timeSec * 0.35) * 0.04);
+          const lanternY = horizon - 4 + Math.sin(timeSec * 1.6) * 2.5;
+          const lanternR = 32 + energy * 24;
+          const lGrad = ctx.createRadialGradient(lanternX, lanternY, 2, lanternX, lanternY, lanternR);
+          lGrad.addColorStop(0, 'rgba(255, 236, 179, 0.95)');
+          lGrad.addColorStop(0.4, 'rgba(246, 185, 110, 0.35)');
+          lGrad.addColorStop(1, 'rgba(246, 185, 110, 0)');
+          ctx.fillStyle = lGrad;
+          ctx.beginPath();
+          ctx.arc(lanternX, lanternY, lanternR, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = `rgba(255, 217, 142, ${0.28 + energy * 0.25})`;
+          for (let i = 0; i < 6; i++) {
+            const ry = horizon + 10 + i * ((h - horizon - 18) / 6);
+            const rw = (26 - i * 3) + Math.sin(timeSec * 3 + i) * 6;
+            ctx.fillRect(lanternX - rw / 2, ry, rw, 2);
+          }
+
+          this.ripples.forEach((rp) => {
+            const p = (rp.phase + timeSec * 0.28) % 1;
+            const rx = rp.x * w;
+            const ry = rp.y * h;
+            const radX = 6 + p * (28 + energy * 18);
+            const radY = radX * 0.28;
+            ctx.strokeStyle = `rgba(221, 212, 237, ${(1 - p) * 0.42})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.ellipse(rx, ry, radX, radY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          });
+
+          ctx.strokeStyle = 'rgba(248, 242, 245, 0.22)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          this.raindrops.forEach((d) => {
+            const yNorm = (d.y + timeSec * d.speed) % 1;
+            const x = d.x * w;
+            const y = yNorm * h;
+            const len = d.len * h;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - len * 0.16, y + len);
+          });
+          ctx.stroke();
+        }
+      }
+
+      const mainMVRenderer = new NocturnalMVRenderer(mvCanvas);
+      let modalMVRenderer = null;
+
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => {
+          mainMVRenderer.resize();
+          mainMVRenderer.render(engine.currentTime, engine.smoothedEnergy);
+        }).observe(mvCard);
+      }
+
+      /* =========================================================
+         9. Main Animation Loop
+         ========================================================= */
+      let rafId = null;
+
+      function updateTimelineUI(forceLyricScroll = false) {
+        const t = engine.currentTime;
+        const progress = t / TRACK_DURATION;
+        const timeStr = formatTime(t);
+
+        headerTimecode.textContent = `${timeStr} / 01:00`;
+        playerCurrentTime.textContent = timeStr;
+        if (document.activeElement !== masterSeekSlider) {
+          masterSeekSlider.value = t.toFixed(1);
+        }
+        mvProgressFill.style.width = `${(progress * 100).toFixed(2)}%`;
+
+        updateTonearmAngle(progress);
+        updateActiveLyric(t, forceLyricScroll);
+      }
+
+      function animate(nowTs) {
+        const energy = engine.tick(nowTs);
+        rootEl.style.setProperty('--audio-energy', energy.toFixed(3));
+
+        if (engine.isPlaying) {
+          vinylVelocity += (TARGET_VINYL_VEL - vinylVelocity) * 0.08;
+        } else {
+          vinylVelocity *= 0.955;
+          if (vinylVelocity < 0.004) vinylVelocity = 0;
+        }
+
+        if (vinylVelocity > 0) {
+          vinylAngle = (vinylAngle + vinylVelocity) % 360;
+          vinylDisc.style.transform = `rotate(${vinylAngle.toFixed(2)}deg)`;
+        }
+
+        updateTimelineUI(false);
+        mainMVRenderer.render(engine.currentTime, energy);
+        if (modalMVRenderer) modalMVRenderer.render(engine.currentTime, energy);
+
+        if (engine.isPlaying || vinylVelocity > 0 || energy > 0.005 || modalMVRenderer) {
+          rafId = requestAnimationFrame(animate);
+        } else {
+          rafId = null;
+          rootEl.style.setProperty('--audio-energy', '0');
+        }
+      }
+
+      function ensureAnimationLoop() {
+        if (!rafId) {
+          engine.lastFrameTs = performance.now();
+          rafId = requestAnimationFrame(animate);
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && engine.isPlaying) {
+          engine.pause();
+          syncPlayStateUI();
+        }
+      });
+
+      /* =========================================================
+         10. FLIP Grid Reflow Helper (Scale-aware)
+         ========================================================= */
+      function flipGridMutation(mutateFn, excludeEl = null) {
+        const cards = Array.from(spatialGrid.querySelectorAll('.widget-card')).filter(
+          (c) => c !== excludeEl
+        );
+        const firstRects = new Map();
+        cards.forEach((c) => firstRects.set(c, c.getBoundingClientRect()));
+
+        mutateFn();
+
+        const scaleFactor = camScale;
+        cards.forEach((c) => {
+          const first = firstRects.get(c);
+          const last = c.getBoundingClientRect();
+          const dx = (first.left - last.left) / scaleFactor;
+          const dy = (first.top - last.top) / scaleFactor;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            c.style.transition = 'none';
+            c.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+            requestAnimationFrame(() => {
+              c.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+              c.style.transform = '';
+            });
+          }
+        });
+      }
+
+      /* =========================================================
+         11. Rock-Solid Bottom-Right Drag-to-Resize + Edge Scroll
+         ========================================================= */
+      const GRID_COLS = 4;
+      const BASE_GRID_WIDTH = 1180;
+      const GRID_GAP = 16;
+      const GRID_CELL_H = 210;
+
+      function getGridMetrics() {
+        const cellW = (BASE_GRID_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+        return { cols: GRID_COLS, cellW, cellH: GRID_CELL_H, gap: GRID_GAP };
+      }
+
+      function parseSizeStr(str) {
+        const [w, h] = str.split('x').map(Number);
+        return { w, h };
+      }
+
+      function pickNearestAllowedSize(rawW, rawH, allowedList) {
+        let best = allowedList[0];
+        let bestDist = Infinity;
+        allowedList.forEach((sizeStr) => {
+          const { w, h } = parseSizeStr(sizeStr);
+          const dist = Math.hypot(w - rawW, h - rawH);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = sizeStr;
+          }
+        });
+        return best;
+      }
+
+      let activeResize = null;
+
+      function updateResizePreview(clientX, clientY) {
+        if (!activeResize) return;
+        const { card, metrics, allowed } = activeResize;
+        const cardRect = card.getBoundingClientRect();
+        const scale = camScale;
+
+        // Compute proposed size directly from card's current screen top-left to pointer
+        const proposedW = Math.max(80, (clientX - cardRect.left) / scale);
+        const proposedH = Math.max(80, (clientY - cardRect.top) / scale);
+
+        const rawCols = (proposedW + metrics.gap) / (metrics.cellW + metrics.gap);
+        const rawRows = (proposedH + metrics.gap) / (metrics.cellH + metrics.gap);
+
+        const snapped = pickNearestAllowedSize(rawCols, rawRows, allowed);
+        activeResize.targetSize = snapped;
+
+        const { w, h } = parseSizeStr(snapped);
+        const ghostW = (w * metrics.cellW + (w - 1) * metrics.gap) * scale;
+        const ghostH = (h * metrics.cellH + (h - 1) * metrics.gap) * scale;
+
+        resizePreviewGhost.style.left = `${cardRect.left}px`;
+        resizePreviewGhost.style.top = `${cardRect.top}px`;
+        resizePreviewGhost.style.width = `${ghostW}px`;
+        resizePreviewGhost.style.height = `${ghostH}px`;
+      }
+
+      /**
+       * Single unconditional cleanup routine for resize.
+       * Bound to window pointerup, pointercancel, blur, and handle lostpointercapture.
+       */
+      function cleanupResize(commit = true) {
+        if (!activeResize) {
+          resizePreviewGhost.classList.remove('visible');
+          resizePreviewGhost.style.display = 'none';
+          resizePreviewGhost.style.opacity = '0';
+          return;
+        }
+
+        const { card, handle, pointerId, targetSize } = activeResize;
+        activeResize = null;
+
+        // Unconditionally hide preview box
+        resizePreviewGhost.classList.remove('visible');
+        resizePreviewGhost.style.display = 'none';
+        resizePreviewGhost.style.opacity = '0';
+
+        card.classList.remove('is-resizing');
+        document.body.style.cursor = '';
+        stopEdgeScrollLoop();
+
+        try {
+          if (handle.hasPointerCapture(pointerId)) {
+            handle.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+
+        if (commit && targetSize) {
+          const oldSpan = getCardSpan(card);
+          const newSpan = parseSizeStr(targetSize);
+          const cell = getCardCell(card);
+          flipGridMutation(() => {
+            card.dataset.size = targetSize;
+            resolveResizeYield(card, cell, oldSpan, newSpan);
+            applyCardPositions();
+          });
+        }
+      }
+
+      spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+        const handle = card.querySelector('.resize-handle');
+        if (!handle) return;
+
+        handle.addEventListener('pointerdown', (e) => {
+          // 只响应主键；右键/中键不应进入缩放，也不该吞掉右键菜单
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          if (activeResize) return;
+          if (dragState) return; // 重排进行中（多指场景）不要叠一套缩放状态机
+          // Space + 左键优先级高于缩放，交给画布平移
+          if (isSpacePressed) return;
+          e.stopPropagation();
+          e.preventDefault();
+
+          const rect = card.getBoundingClientRect();
+          const metrics = getGridMetrics();
+          const allowed = (card.dataset.allowedSizes || '1x1,2x1,2x2').split(',');
+
+          lastPointerX = e.clientX;
+          lastPointerY = e.clientY;
+
+          activeResize = {
+            card,
+            handle,
+            pointerId: e.pointerId,
+            metrics,
+            allowed,
+            targetSize: card.dataset.size
+          };
+
+          card.classList.add('is-resizing');
+          document.body.style.cursor = 'nwse-resize';
+          try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+
+          resizePreviewGhost.style.display = 'block';
+          resizePreviewGhost.style.opacity = '1';
+          resizePreviewGhost.style.left = `${rect.left}px`;
+          resizePreviewGhost.style.top = `${rect.top}px`;
+          resizePreviewGhost.style.width = `${rect.width}px`;
+          resizePreviewGhost.style.height = `${rect.height}px`;
+          resizePreviewGhost.classList.add('visible');
+
+          startEdgeScrollLoop();
+        });
+
+        handle.addEventListener('lostpointercapture', () => {
+          if (activeResize && activeResize.handle === handle) {
+            cleanupResize(true);
+          }
+        });
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (activeResize) {
+          // 只跟随发起缩放的指针，多指触摸时不被另一根手指带偏
+          if (e.pointerId !== activeResize.pointerId) return;
+          lastPointerX = e.clientX;
+          lastPointerY = e.clientY;
+          updateResizePreview(e.clientX, e.clientY);
+          return;
+        }
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (activeResize && e.pointerId === activeResize.pointerId) cleanupResize(true);
+      });
+
+      window.addEventListener('pointercancel', (e) => {
+        if (activeResize && e.pointerId === activeResize.pointerId) cleanupResize(false);
+      });
+
+      window.addEventListener('blur', () => {
+        if (activeResize) cleanupResize(false);
+      });
+
+      /* =========================================================
+         12. Free-Form Grid: Long-Press Drag, Conflict Yield & Edge Scroll
+         ========================================================= */
+      const LONG_PRESS_MS = 260;
+      // 拖起时的放大倍数；抓取点保持在指针下，放大只是视觉提示
+      const LIFT_SCALE = 1.03;
+      let dragState = null;
+
+      function getCardSpan(card) {
+        const [w, h] = (card.dataset.size || '1x1').split('x').map(Number);
+        return { w: w || 1, h: h || 1 };
+      }
+
+      function getCardCell(card) {
+        const col = Number.parseInt(card.dataset.col, 10);
+        const row = Number.parseInt(card.dataset.row, 10);
+        return {
+          col: Number.isFinite(col) ? col : 0,
+          row: Number.isFinite(row) ? row : 0
+        };
+      }
+
+      function setCardCell(card, col, row) {
+        card.dataset.col = String(col);
+        card.dataset.row = String(row);
+      }
+
+      function cellToRect(col, row, span) {
+        const m = getGridMetrics();
+        return {
+          left: col * (m.cellW + m.gap),
+          top: row * (m.cellH + m.gap),
+          width: span.w * m.cellW + (span.w - 1) * m.gap,
+          height: span.h * m.cellH + (span.h - 1) * m.gap
+        };
+      }
+
+      /**
+       * 按 data-col/row 绝对定位。坐标不设上下限（负数和很远的值都合法），
+       * 空位保留、不自动补位；所有断点共用同一套无限画布。
+       */
+      function applyCardPositions() {
+        spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+          const span = getCardSpan(card);
+          const { col, row } = getCardCell(card);
+          const rect = cellToRect(col, row, span);
+          card.style.position = 'absolute';
+          card.style.left = `${rect.left}px`;
+          card.style.top = `${rect.top}px`;
+          card.style.width = `${rect.width}px`;
+          card.style.height = `${rect.height}px`;
+        });
+      }
+
+      function positionPlaceholder(placeholder, col, row, span) {
+        if (!placeholder) return;
+        placeholder.dataset.size = `${span.w}x${span.h}`;
+        const rect = cellToRect(col, row, span);
+        placeholder.style.position = 'absolute';
+        placeholder.style.left = `${rect.left}px`;
+        placeholder.style.top = `${rect.top}px`;
+        placeholder.style.width = `${rect.width}px`;
+        placeholder.style.height = `${rect.height}px`;
+      }
+
+      function rectsOverlap(a, b) {
+        return (
+          a.col < b.col + b.w &&
+          a.col + a.w > b.col &&
+          a.row < b.row + b.h &&
+          a.row + a.h > b.row
+        );
+      }
+
+      function yieldDirection(fromCol, fromRow, toCol, toRow) {
+        const dc = toCol - fromCol;
+        const dr = toRow - fromRow;
+        if (dc === 0 && dr === 0) return null;
+        if (Math.abs(dc) >= Math.abs(dr)) return dc > 0 ? 'right' : 'left';
+        return dr > 0 ? 'down' : 'up';
+      }
+
+      /**
+       * 冲突让位：只沿拖拽的主导方向把重叠的卡片逐格推出去。
+       * 空位不补位，坐标没有边界，负数也照常推。
+       */
+      function resolveYield(target, movables, direction) {
+        const step =
+          direction === 'left' ? { dc: -1, dr: 0 }
+          : direction === 'right' ? { dc: 1, dr: 0 }
+          : direction === 'up' ? { dc: 0, dr: -1 }
+          : { dc: 0, dr: 1 };
+
+        // 先处理推进方向上最靠外的那张，再依次向回处理，避免两张卡互相顶住
+        const sorted = movables.slice().sort((a, b) => {
+          if (step.dc !== 0) return step.dc > 0 ? b.col - a.col : a.col - b.col;
+          return step.dr > 0 ? b.row - a.row : a.row - b.row;
+        });
+
+        const placed = [target];
+        sorted.forEach((item) => {
+          let guard = 0;
+          const rect = () => ({ col: item.col, row: item.row, w: item.w, h: item.h });
+          while (placed.some((p) => rectsOverlap(rect(), p)) && guard < 2000) {
+            item.col += step.dc;
+            item.row += step.dr;
+            guard += 1;
+          }
+          placed.push({ col: item.col, row: item.row, w: item.w, h: item.h });
+        });
+      }
+
+      function previewFreePlacement(col, row) {
+        if (!dragState || !dragState.snapshot) return;
+        const { card, snapshot, startCell, placeholder } = dragState;
+        const span = getCardSpan(card);
+        const direction = yieldDirection(startCell.col, startCell.row, col, row);
+
+        // 每次预览都从拖动前的快照重算，来回拖不会把卡片越推越远
+        const movables = [];
+        snapshot.forEach((cell, other) => {
+          if (other === card) return;
+          const s = getCardSpan(other);
+          movables.push({ card: other, col: cell.col, row: cell.row, w: s.w, h: s.h });
+        });
+
+        if (direction) {
+          resolveYield({ col, row, w: span.w, h: span.h }, movables, direction);
+        }
+
+        positionPlaceholder(placeholder, col, row, span);
+        flipGridMutation(() => {
+          movables.forEach((m) => setCardCell(m.card, m.col, m.row));
+          applyCardPositions();
+        }, card);
+      }
+
+      function updateDragPositionAndHitTest(clientX, clientY) {
+        if (!dragState || dragState.phase !== 'dragging') return;
+        const { card, grabOffsetX, grabOffsetY } = dragState;
+
+        // 卡片被放大 LIFT_SCALE 后，抓取点距左上角也同比变大，所以位移要乘以 LIFT_SCALE 补偿
+        const left = clientX - grabOffsetX * LIFT_SCALE;
+        const top = clientY - grabOffsetY * LIFT_SCALE;
+        card.style.left = `${left}px`;
+        card.style.top = `${top}px`;
+
+        // 用卡片左上角（不是指针）换算目标格，抓在卡片哪个位置就保持那个位置
+        const m = getGridMetrics();
+        const worldLeft = (left - camX) / camScale;
+        const worldTop = (top - camY) / camScale;
+        const col = Math.round(worldLeft / (m.cellW + m.gap));
+        const row = Math.round(worldTop / (m.cellH + m.gap));
+
+        if (dragState.targetCell && dragState.targetCell.col === col && dragState.targetCell.row === row) {
+          return;
+        }
+        dragState.targetCell = { col, row };
+        previewFreePlacement(col, row);
+      }
+
+      spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+        const zone = card.querySelector('.drag-handle-zone');
+        if (!zone) return;
+
+        zone.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          if (dragState) return; // 上一次重排还在收尾时不要重入，否则定时器会互相覆盖
+          if (activeResize) return; // 缩放进行中（多指场景）不要叠一套重排状态机
+          // 按住 Space 时左键拖拽一律视为画布平移
+          if (isSpacePressed) return;
+          // 不 stopPropagation / 不捕获：长按前若先拖动，window 层会把它当成画布平移
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const pointerId = e.pointerId;
+          lastPointerX = startX;
+          lastPointerY = startY;
+
+          card.classList.add('is-holding');
+
+          const timer = setTimeout(() => {
+            beginCardReorder(card, zone, pointerId, startX, startY);
+          }, LONG_PRESS_MS);
+
+          dragState = {
+            phase: 'pending',
+            card,
+            zone,
+            pointerId,
+            startX,
+            startY,
+            timer,
+            placeholder: null,
+            grabOffsetX: 0,
+            grabOffsetY: 0
+          };
+
+        });
+
+        function handleDragEnd(e) {
+          if (!dragState || dragState.card !== card) return;
+          if (e && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
+          if (dragState.phase === 'pending') {
+            cancelPendingDrag();
+          } else if (dragState.phase === 'dragging') {
+            finishCardReorder();
+          }
+        }
+
+        zone.addEventListener('pointerup', handleDragEnd);
+        zone.addEventListener('pointercancel', handleDragEnd);
+      });
+
+      // 拖拽期间卡片会被移到 body，pointer capture 可能随之丢失，
+      // 所以移动统一用 window 上的 pointermove 驱动，而不是依赖 zone 的捕获。
+      window.addEventListener('pointermove', (e) => {
+        if (!dragState || e.pointerId !== dragState.pointerId) return;
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+
+        if (dragState.phase === 'pending') {
+          if (Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) > 8) {
+            cancelPendingDrag();
+          }
+          return;
+        }
+
+        if (dragState.phase === 'dragging') {
+          e.preventDefault();
+          updateDragPositionAndHitTest(e.clientX, e.clientY);
+        }
+      });
+
+      // 窗口失焦（Alt+Tab、切应用）时指针事件会断，必须主动收尾，否则重排卡在 dragging
+      function endCardDragFromWindow(e) {
+        if (!dragState || (e && e.pointerId != null && e.pointerId !== dragState.pointerId)) return;
+        if (dragState.phase === 'dragging') {
+          finishCardReorder();
+        } else if (dragState.phase === 'pending') {
+          cancelPendingDrag();
+        }
+      }
+
+      window.addEventListener('blur', () => endCardDragFromWindow(null));
+      // 指针捕获失败 / 在卡片外释放时也能收尾
+      window.addEventListener('pointerup', endCardDragFromWindow);
+      window.addEventListener('pointercancel', endCardDragFromWindow);
+
+      function cancelPendingDrag() {
+        if (!dragState) return;
+        clearTimeout(dragState.timer);
+        dragState.card.classList.remove('is-holding');
+        try {
+          if (dragState.zone.hasPointerCapture(dragState.pointerId)) {
+            dragState.zone.releasePointerCapture(dragState.pointerId);
+          }
+        } catch (_) {}
+        dragState = null;
+      }
+
+      function beginCardReorder(card, zone, pointerId, startX, startY) {
+        if (!dragState || dragState.card !== card) return;
+        stopTouchGesture(); // 长按成立时，取消触摸层已经开始的平移
+        suppressClickUntil = performance.now() + 250;
+        const rect = card.getBoundingClientRect();
+        const cameraScale = camScale;
+        const grabOffsetX = startX - rect.left;
+        const grabOffsetY = startY - rect.top;
+        const startCell = getCardCell(card);
+
+        // 记录拖动前的快照，之后每次让位预览都从它重算
+        const snapshot = new Map();
+        spatialGrid.querySelectorAll('.widget-card').forEach((c) => snapshot.set(c, getCardCell(c)));
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.dataset.size = card.dataset.size;
+
+        card.parentNode.insertBefore(placeholder, card);
+        // 显式释放 zone 上的捕获再搬走卡片：移动已捕获的元素会触发 lostpointercapture，
+        // 随后把捕获转给 canvasViewport（它不会被移动），指针移出窗口时仍能收到事件
+        try {
+          if (zone.hasPointerCapture(pointerId)) zone.releasePointerCapture(pointerId);
+        } catch (_) {}
+        document.body.appendChild(card);
+        try { canvasViewport.setPointerCapture(pointerId); } catch (_) {}
+
+        card.classList.remove('is-holding');
+        card.classList.add('is-lifted');
+        card.style.position = 'fixed';
+        // 宽度用「世界单位」保存，再用 transform 乘回相机缩放，卡片内部比例与画布上完全一致
+        card.style.width = `${rect.width / cameraScale}px`;
+        card.style.height = `${rect.height / cameraScale}px`;
+        card.style.left = `${startX - grabOffsetX * LIFT_SCALE}px`;
+        card.style.top = `${startY - grabOffsetY * LIFT_SCALE}px`;
+        card.style.margin = '0';
+        card.style.transformOrigin = '0 0';
+        card.style.transform = `scale(${cameraScale * LIFT_SCALE})`;
+        card.style.transition = 'none';
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+
+        dragState.phase = 'dragging';
+        dragState.placeholder = placeholder;
+        dragState.grabOffsetX = grabOffsetX;
+        dragState.grabOffsetY = grabOffsetY;
+        dragState.startCell = startCell;
+        dragState.targetCell = { col: startCell.col, row: startCell.row };
+        dragState.snapshot = snapshot;
+
+        positionPlaceholder(placeholder, startCell.col, startCell.row, getCardSpan(card));
+
+        startEdgeScrollLoop();
+      }
+
+      function resolveResizeYield(card, cell, oldSpan, newSpan) {
+        if (!newSpan) return;
+        const grewW = newSpan.w > oldSpan.w;
+        const grewH = newSpan.h > oldSpan.h;
+        if (!grewW && !grewH) return;
+
+        const direction = grewW ? 'right' : 'down';
+        const movables = [];
+        spatialGrid.querySelectorAll('.widget-card').forEach((other) => {
+          if (other === card) return;
+          const span = getCardSpan(other);
+          const c = getCardCell(other);
+          movables.push({ card: other, col: c.col, row: c.row, w: span.w, h: span.h });
+        });
+
+        resolveYield({ col: cell.col, row: cell.row, w: newSpan.w, h: newSpan.h }, movables, direction);
+        movables.forEach((m) => setCardCell(m.card, m.col, m.row));
+      }
+
+      function finishCardReorder() {
+        if (!dragState) return;
+        const reorder = dragState;
+        const { card, zone, pointerId, placeholder, targetCell } = reorder;
+        dragState.phase = 'settling';
+        suppressClickUntil = performance.now() + 250;
+        stopEdgeScrollLoop();
+
+        try {
+          if (zone.hasPointerCapture(pointerId)) {
+            zone.releasePointerCapture(pointerId);
+          }
+          if (canvasViewport.hasPointerCapture(pointerId)) {
+            canvasViewport.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+
+        const destRect = placeholder.getBoundingClientRect();
+        const cameraScale = camScale;
+        card.style.transition =
+          'left 0.28s cubic-bezier(0.22, 1, 0.36, 1), top 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
+        card.style.left = `${destRect.left}px`;
+        card.style.top = `${destRect.top}px`;
+        // 卡片现在是 body 的直接子元素，不再受 world 缩放，收尾时把相机缩放乘回来
+        card.style.transform = `scale(${cameraScale})`;
+
+        setTimeout(() => {
+          card.classList.remove('is-lifted');
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.height = '';
+          card.style.margin = '';
+          card.style.transition = '';
+          card.style.transform = '';
+          card.style.transformOrigin = '';
+
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+
+          if (targetCell) {
+            setCardCell(card, targetCell.col, targetCell.row);
+          }
+
+          if (placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(card, placeholder);
+            placeholder.remove();
+          }
+
+          applyCardPositions();
+
+          // 只清理本次会话，避免旧定时器把新一轮拖拽的 dragState 置空
+          if (dragState === reorder) dragState = null;
+        }, 320);
+      }
+
+      /* =========================================================
+         13. Transport & Lightbox
+         ========================================================= */
+      // 鼠标点击按钮后主动释放焦点，否则下一次按 Space 会重新触发该按钮，而不是进入平移
+      document.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          if (e.detail > 0) btn.blur();
+        });
+      });
+
+      function handleTogglePlay() {
+        engine.toggle();
+        syncPlayStateUI();
+      }
+
+      headerPlayBtn.addEventListener('click', handleTogglePlay);
+      vinylPlayBtn.addEventListener('click', handleTogglePlay);
+      vinylOverlayPlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleTogglePlay();
+      });
+      vinylDisc.addEventListener('click', handleTogglePlay);
+
+      masterSeekSlider.addEventListener('input', (e) => {
+        engine.seek(parseFloat(e.target.value), false);
+        updateTimelineUI(true);
+      });
+
+      // 触摸端补一个自定义 seek：画布整体 touch-action: none 时，原生 range 的拖动手感不可靠
+      let seekPointerId = null;
+
+      function seekFromClientX(clientX) {
+        const rect = masterSeekSlider.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const max = parseFloat(masterSeekSlider.max) || TRACK_DURATION;
+        masterSeekSlider.value = (ratio * max).toFixed(1);
+        masterSeekSlider.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      masterSeekSlider.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'touch') return;
+        e.preventDefault();
+        seekPointerId = e.pointerId;
+        seekFromClientX(e.clientX);
+        try { masterSeekSlider.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      masterSeekSlider.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'touch' || seekPointerId !== e.pointerId) return;
+        seekFromClientX(e.clientX);
+      });
+
+      function endSeekTouch(e) {
+        if (seekPointerId == null) return;
+        if (e && e.pointerId != null && e.pointerId !== seekPointerId) return;
+        const id = seekPointerId;
+        seekPointerId = null;
+        try {
+          if (masterSeekSlider.hasPointerCapture(id)) masterSeekSlider.releasePointerCapture(id);
+        } catch (_) {}
+      }
+
+      masterSeekSlider.addEventListener('pointerup', endSeekTouch);
+      masterSeekSlider.addEventListener('pointercancel', endSeekTouch);
+
+      function openModal(title, contentEl, isMV = false) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = '';
+        modalBody.appendChild(contentEl);
+        modalBackdrop.classList.add('open');
+        modalBackdrop.setAttribute('aria-hidden', 'false');
+
+        if (isMV) {
+          requestAnimationFrame(() => {
+            modalMVRenderer = new NocturnalMVRenderer(contentEl);
+            modalMVRenderer.render(engine.currentTime, engine.smoothedEnergy);
+            ensureAnimationLoop();
+          });
+        }
+      }
+
+      function closeModal() {
+        modalBackdrop.classList.remove('open');
+        modalBackdrop.setAttribute('aria-hidden', 'true');
+        modalMVRenderer = null;
+      }
+
+      modalCloseBtn.addEventListener('click', closeModal);
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalBackdrop.classList.contains('open')) closeModal();
+      });
+
+      mvCard.addEventListener('click', () => {
+        const bigCanvas = document.createElement('canvas');
+        bigCanvas.style.width = '100%';
+        bigCanvas.style.height = '100%';
+        openModal('夜航船 · 雨夜渡口', bigCanvas, true);
+      });
+
+      imageCard.addEventListener('dblclick', () => {
+        const svgClone = imageCard.querySelector('svg').cloneNode(true);
+        svgClone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        openModal('夜航船 · 封面原画', svgClone, false);
+      });
+
+      /* =========================================================
+         14. Bootstrap
+         ========================================================= */
+      // 脚本在 body 末尾，立即按 data-col/row 布局并给出首帧相机，避免闪一下原点布局
+      applyCardPositions();
+      focusInitialView();
+
+      window.onload = () => {
+        initLyrics();
+        updateTimelineUI(true);
+        mainMVRenderer.resize();
+        mainMVRenderer.render(0, 0);
+        focusInitialView();
+      };
+    })();
+  </script>
+</body>
+</html>

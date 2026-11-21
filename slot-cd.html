@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>未解忆长安 · 和诗以歌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Inter+Tight:wght@500&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  /* =========================================================
+     slot-cd · 从 Figma 节点 3312:698 复刻
+     画布 1080×1350，所有尺寸按 Figma 原始像素 1:1 落位
+     ========================================================= */
+  :root {
+    --stage: #e8ebf2;
+    --ink: #16171b;
+    --muted: #8a8f9c;
+    --navy: 27, 36, 64;
+    --eq: #42baea;
+
+    --sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    --tight: 'Inter Tight', 'Inter', var(--sans);
+    --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+    --lift: 0px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--stage);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  .viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage);
+  }
+
+  .stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1080px;
+    height: 1350px;
+    background: var(--stage);
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    position: absolute;
+    left: 251px;
+    top: 458px;
+    width: 578px;
+    height: 581px;
+    border-radius: 120px;
+    background: linear-gradient(180deg, #fbfbfd 0%, #eceef3 100%);
+    box-shadow:
+      0 30.44px 60.89px -12.18px rgba(var(--navy), 0.14),
+      0 3.04px 7.61px 0 rgba(var(--navy), 0.06),
+      inset 0 -4.57px 9.13px 0 rgba(var(--navy), 0.08),
+      inset 0 0 30.44px 0 rgba(var(--navy), 0.12),
+      inset 0 30.44px 30.44px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .card-body {
+    position: absolute;
+    left: 61px;
+    top: 134px;
+    width: 457px;
+    height: 387px;
+    display: flex;
+    flex-direction: column;
+    gap: 45.67px;
+  }
+
+  /* ---------- 上：状态 + 曲名 ---------- */
+  .info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding-bottom: 30.44px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10.66px;
+    height: 18.27px;
+  }
+
+  .eq {
+    display: flex;
+    align-items: flex-end;
+    gap: 3.04px;
+    height: 18.27px;
+  }
+
+  .eq i {
+    display: block;
+    width: 3.04px;
+    height: var(--h);
+    border-radius: 1.52px;
+    background: var(--eq);
+    animation: eqp var(--dur) ease-in-out infinite alternate;
+    animation-delay: var(--delay);
+    animation-play-state: paused;
+  }
+
+  .stage.is-playing .eq i { animation-play-state: running; }
+
+  @keyframes eqp {
+    from { height: var(--h); }
+    to { height: var(--h2); }
+  }
+
+  .eyebrow-text {
+    font-family: var(--tight);
+    font-weight: 500;
+    font-size: 15.22px;
+    line-height: 18.27px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .meta-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9.13px;
+  }
+
+  .title {
+    font-weight: 700;
+    font-size: 48.71px;
+    line-height: 59px;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    text-align: center;
+    white-space: nowrap;
+    transition: font-size 0.25s ease;
+  }
+
+  .meta {
+    font-weight: 400;
+    font-size: 18.27px;
+    line-height: 22px;
+    color: var(--muted);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ---------- 进度 ---------- */
+  .progress {
+    position: relative;
+    width: 426.22px;
+    align-self: center;
+    height: 45.67px;
+    flex: none;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .track,
+  .played {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 4.57px;
+    border-radius: 2.29px;
+  }
+
+  .track { width: 100%; background: rgba(var(--navy), 0.1); }
+  .played { width: 0; background: var(--ink); }
+
+  .knob {
+    position: absolute;
+    top: -9.13px;
+    left: 0;
+    width: 22.83px;
+    height: 22.83px;
+    border-radius: 50%;
+    background: var(--ink);
+    transform: translateX(-50%);
+    box-shadow: 0 2px 6px rgba(22, 23, 27, 0.28);
+    transition: transform 0.12s ease;
+  }
+
+  .progress:hover .knob { transform: translateX(-50%) scale(1.06); }
+
+  .t-elapsed,
+  .t-remaining {
+    position: absolute;
+    top: 19.79px;
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 16.74px;
+    line-height: 22px;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .t-elapsed { left: 0; color: var(--ink); }
+  .t-remaining { right: 0; color: var(--muted); }
+
+  /* ---------- 控制键 ---------- */
+  .controls {
+    height: 79.16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 48.71px;
+  }
+
+  .icon-btn {
+    width: 25.88px;
+    height: 22.83px;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--ink);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+  }
+
+  .icon-btn:hover { transform: scale(1.12); }
+  .icon-btn:active { transform: scale(0.94); }
+
+  .icon-btn svg { display: block; }
+
+  .play-btn {
+    position: relative;
+    width: 79.16px;
+    height: 79.16px;
+    border: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    box-shadow:
+      0 9.13px 18.27px -4.57px rgba(22, 23, 27, 0.25),
+      inset 0 9.13px 15.22px rgba(255, 255, 255, 0.6),
+      inset 0 -9.13px 9.13px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
+
+  .play-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    /* 角度渐变取自参考渲染的实测采样：12 点方向为起点，顺时针 */
+    background: conic-gradient(
+      from 0deg,
+      #b3f6c2 0deg,
+      #c8ecb3 20deg,
+      #e5e6a6 40deg,
+      #f1dd96 60deg,
+      #f7d27f 80deg,
+      #f2c27c 100deg,
+      #eaa784 120deg,
+      #e28c94 140deg,
+      #d37ba0 160deg,
+      #b077ac 180deg,
+      #9b75c2 200deg,
+      #8b7fe3 220deg,
+      #8199e5 240deg,
+      #7cb2ed 260deg,
+      #77ccf1 280deg,
+      #8fdeed 300deg,
+      #9ce7dd 320deg,
+      #a6f1ca 340deg,
+      #b3f6c2 360deg
+    );
+    transition: opacity 0.5s ease;
+  }
+
+  .play-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(56% 50% at 50% 15%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 72%),
+      radial-gradient(95% 95% at 50% 112%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0) 62%);
+    pointer-events: none;
+  }
+
+  .stage.is-playing .play-btn::before { opacity: 0; }
+
+  .play-btn:active { transform: scale(0.96); }
+
+  .play-btn .icon {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+  }
+
+  .play-btn .icon svg {
+    filter: drop-shadow(0 5px 10px rgba(22, 23, 27, 0.22));
+  }
+
+  .play-btn .icon-pause { display: none; }
+  .stage.is-playing .play-btn .icon-play { display: none; }
+  .stage.is-playing .play-btn .icon-pause { display: grid; }
+
+  .play-btn.idle { animation: invite 3.6s ease-in-out infinite; }
+
+  @keyframes invite {
+    0%, 100% { box-shadow: 0 9.13px 18.27px -4.57px rgba(22, 23, 27, 0.25), inset 0 9.13px 15.22px rgba(255, 255, 255, 0.6), inset 0 -9.13px 9.13px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(155, 139, 255, 0.5); }
+    55% { box-shadow: 0 9.13px 18.27px -4.57px rgba(22, 23, 27, 0.25), inset 0 9.13px 15.22px rgba(255, 255, 255, 0.6), inset 0 -9.13px 9.13px rgba(0, 0, 0, 0.2), 0 0 0 14px rgba(155, 139, 255, 0); }
+  }
+
+  /* ---------- 唱片 ---------- */
+  .disc-frame {
+    position: absolute;
+    left: 129px;
+    top: 195px;
+    width: 822px;
+    height: 344px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .disc {
+    position: absolute;
+    left: 183px;
+    top: 116px;
+    width: 456.67px;
+    height: 456.67px;
+    border-radius: 50%;
+    overflow: hidden;
+    transform: translateY(var(--lift));
+    transition: transform 0.95s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.35s ease;
+  }
+
+  /* 播放时唱片再往外探一点，像是被转起来往上顶了一丝 */
+  .stage.is-playing .disc { --lift: -6px; }
+
+  .disc.is-in { opacity: 0; transform: translateY(84px); }
+
+  .disc-spin {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    animation: spin 9s linear infinite;
+    animation-play-state: paused;
+    will-change: transform;
+  }
+
+  .stage.is-playing .disc-spin { animation-play-state: running; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .disc-art {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-color: #1c1d22;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .disc-etch { position: absolute; inset: 0; }
+
+  .disc-etch i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7.61px;
+    height: 2.28px;
+    margin: -1.14px 0 0 -3.8px;
+    border-radius: 0.6px;
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .disc-irid {
+    position: absolute;
+    left: 144.61px;
+    top: 144.61px;
+    width: 167.44px;
+    height: 167.44px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      #b9bcc6 0%,
+      #7f9be6 6%,
+      #86d49a 12%,
+      #e3d46a 17%,
+      #ee9e74 23%,
+      #b7aeb8 30%,
+      #b9bcc6 50%,
+      #7f9be6 56%,
+      #86d49a 62%,
+      #e3d46a 67%,
+      #ee9e74 73%,
+      #b7aeb8 80%,
+      #b9bcc6 100%
+    );
+  }
+
+  .disc-label {
+    position: absolute;
+    left: 161.36px;
+    top: 161.36px;
+    width: 133.96px;
+    height: 133.96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fafbfd 0%, #e1e4ea 100%);
+    display: grid;
+    place-items: center;
+  }
+
+  .disc-ring {
+    width: 91.33px;
+    height: 91.33px;
+    border-radius: 50%;
+    background: #cdd0d6;
+    display: grid;
+    place-items: center;
+  }
+
+  .disc-hole {
+    width: 57.84px;
+    height: 57.84px;
+    border-radius: 50%;
+    background: #7d7f88;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  .disc-sheen,
+  .disc-refl {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .disc-sheen {
+    background: conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.26) 12%,
+      rgba(255, 255, 255, 0) 25%,
+      rgba(255, 255, 255, 0) 60%,
+      rgba(255, 255, 255, 0.18) 72%,
+      rgba(255, 255, 255, 0) 85%
+    );
+  }
+
+  .disc-refl {
+    background: conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.55) 6%,
+      rgba(255, 255, 255, 0.2) 10%,
+      rgba(255, 255, 255, 0) 17%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.42) 58%,
+      rgba(255, 255, 255, 0) 64%,
+      rgba(255, 255, 255, 0) 82%,
+      rgba(255, 255, 255, 0.26) 86%,
+      rgba(255, 255, 255, 0) 90%
+    );
+  }
+
+  .disc-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.7)) border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ---------- 卡槽 ---------- */
+  .slot {
+    position: absolute;
+    left: 289px;
+    top: 534.35px;
+    width: 502.33px;
+    height: 10.66px;
+    border-radius: 5.33px;
+    background: linear-gradient(180deg, #2a2c33 0%, #4a4d57 100%);
+    box-shadow:
+      inset 0 2.28px 3.04px rgba(0, 0, 0, 0.55),
+      0 1.52px 0 0 rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+  }
+
+  /* ---------- 焦点可见性 ---------- */
+  :focus-visible {
+    outline: 2.5px solid rgba(90, 80, 200, 0.55);
+    outline-offset: 4px;
+  }
+
+  .play-btn:focus-visible { outline-offset: 6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .disc-spin { animation: none; }
+    .eq i { animation: none; }
+    .play-btn.idle { animation: none; }
+    .disc { transition: opacity 0.2s ease; }
+  }
+</style>
+</head>
+<body>
+  <div class="viewport">
+    <div class="stage" id="stage">
+      <!-- 卡片 -->
+      <div class="card">
+        <div class="card-body">
+          <div class="info">
+            <div class="eyebrow">
+              <div class="eq" aria-hidden="true">
+                <i style="--h:8px;--h2:15px;--dur:.95s;--delay:0s"></i>
+                <i style="--h:15px;--h2:6px;--dur:1.15s;--delay:-.22s"></i>
+                <i style="--h:11px;--h2:18px;--dur:1.05s;--delay:-.46s"></i>
+                <i style="--h:18px;--h2:7px;--dur:1.3s;--delay:-.12s"></i>
+                <i style="--h:6px;--h2:16px;--dur:.88s;--delay:-.62s"></i>
+              </div>
+              <span class="eyebrow-text">NOW SPINNING</span>
+            </div>
+
+            <div class="meta-block">
+              <h1 class="title" id="title">未解忆长安</h1>
+              <p class="meta" id="meta">杜甫《月夜》 · 林雨夜 · 2025</p>
+            </div>
+          </div>
+
+          <!-- 进度 -->
+          <div class="progress" id="progress" role="slider" tabindex="0"
+               aria-label="播放进度" aria-valuemin="0" aria-valuemax="246" aria-valuenow="0">
+            <div class="track"></div>
+            <div class="played" id="played"></div>
+            <div class="knob" id="knob"></div>
+            <span class="t-elapsed" id="tElapsed">0:00</span>
+            <span class="t-remaining" id="tRemaining">4:07</span>
+          </div>
+
+          <!-- 控制 -->
+          <div class="controls">
+            <button class="icon-btn" id="prevBtn" type="button" aria-label="上一首">
+              <svg width="25.88" height="22.83" viewBox="0 0 25.88 22.83" fill="none" aria-hidden="true">
+                <rect x="0" y="1.4" width="3.8" height="21.3" rx="1.52" fill="currentColor" />
+                <path d="M24.2 2.6 24.2 20.9 7.3 11.75Z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke fill" />
+              </svg>
+            </button>
+
+            <button class="play-btn idle" id="playBtn" type="button" aria-label="播放" aria-pressed="false">
+              <span class="icon icon-play" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M8.3 5.6 24.5 14.2 8.3 22.8Z" fill="#fff" stroke="#fff" stroke-width="4.8" stroke-linejoin="round" paint-order="stroke fill" />
+                </svg>
+              </span>
+              <span class="icon icon-pause" aria-hidden="true">
+                <svg width="20.8" height="24.4" viewBox="0 0 20.8 24.4" fill="none">
+                  <rect x="0" y="0" width="6.8" height="24.4" rx="2.28" fill="#fff" />
+                  <rect x="14" y="0" width="6.8" height="24.4" rx="2.28" fill="#fff" />
+                </svg>
+              </span>
+            </button>
+
+            <button class="icon-btn" id="nextBtn" type="button" aria-label="下一首">
+              <svg width="25.88" height="22.83" viewBox="0 0 25.88 22.83" fill="none" aria-hidden="true">
+                <rect x="22.08" y="1.4" width="3.8" height="21.3" rx="1.52" fill="currentColor" />
+                <path d="M1.68 2.6 1.68 20.9 18.58 11.75Z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke fill" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 唱片 + 反光 -->
+      <div class="disc-frame">
+        <div class="disc" id="disc">
+          <div class="disc-spin">
+            <div class="disc-art" id="discArt"></div>
+            <div class="disc-etch" id="discEtch" aria-hidden="true"></div>
+            <div class="disc-irid"></div>
+          </div>
+          <div class="disc-label">
+            <div class="disc-ring">
+              <div class="disc-hole"></div>
+            </div>
+          </div>
+          <div class="disc-sheen"></div>
+          <div class="disc-refl"></div>
+          <div class="disc-rim"></div>
+        </div>
+      </div>
+
+      <!-- 卡槽 -->
+      <div class="slot"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============ 内容：取自 demo.html 的曲目数据 ============ */
+  const TRACKS = [
+    {
+      id: 'weijieyichangan',
+      title: '未解忆长安',
+      meta: '杜甫《月夜》 · 林雨夜 · 2025',
+      img: 'assets/img/stories/weijieyichangan.jpg',
+      src: 'assets/audio/weijieyichangan.m4a',
+      duration: 246.561
+    },
+    {
+      id: 'dadong',
+      title: '大东',
+      meta: '《诗经 · 小雅》 · 林雨夜、木狸奴 · 2024',
+      img: 'assets/img/stories/dadong.jpg',
+      src: 'assets/audio/dadong.m4a',
+      duration: 253.128
+    },
+    {
+      id: 'laichun',
+      title: '来春可拟共兰舟',
+      meta: '衢州 · 上海 · 林雨夜、造林 · 2025',
+      img: 'assets/img/stories/laichun.jpg',
+      src: 'assets/audio/laichun.m4a',
+      duration: 220.497
+    },
+    {
+      id: 'suliusha',
+      title: '溯流沙',
+      meta: '文脉 · 七十万页 · 林雨夜、归荑 · 2021',
+      img: 'assets/img/stories/suliusha.jpg',
+      src: 'assets/audio/suliusha.m4a',
+      duration: 244.0
+    },
+    {
+      id: 'yuhudie',
+      title: '玉蝴蝶 · 秋梦',
+      meta: '词牌 · 玉蝴蝶 · 林雨夜 · 2019',
+      img: 'assets/img/stories/yuhudie.jpg',
+      src: 'assets/audio/yuhudie.m4a',
+      duration: 196.272
+    },
+    {
+      id: 'jushaochenjiangnan',
+      title: '聚少趁江南',
+      meta: '江南 · 灯火 · 林雨夜、花桐 · 2025',
+      img: 'assets/img/stories/jushaochenjiangnan.jpg',
+      src: 'assets/audio/jushaochenjiangnan.mp3',
+      duration: 255.884
+    }
+  ];
+
+  /* ============ 舞台等比缩放 ============
+     1080×1350 是 Figma 原画布；这里只按「唱片顶 → 卡片投影底」的安全区铺满视口，
+     四周留白与原画布同色，所以看起来仍是原来那张 4:5 的图。 */
+  const DESIGN_H = 1350;
+  const BOX = { w: 758, h: 864, cy: 697 };
+  const stage = document.getElementById('stage');
+
+  function fitStage() {
+    const s = Math.min(
+      window.innerWidth / BOX.w,
+      window.innerHeight / BOX.h,
+      1.12
+    ) * 0.93;
+    const dy = -(BOX.cy - DESIGN_H / 2);
+    stage.style.transform =
+      'translate(-50%, -50%) scale(' + s + ') translateY(' + dy + 'px)';
+  }
+  fitStage();
+  window.addEventListener('resize', fitStage);
+
+  /* ============ 元素引用 ============ */
+  const titleEl = document.getElementById('title');
+  const metaEl = document.getElementById('meta');
+  const progressEl = document.getElementById('progress');
+  const playedEl = document.getElementById('played');
+  const knobEl = document.getElementById('knob');
+  const tElapsedEl = document.getElementById('tElapsed');
+  const tRemainingEl = document.getElementById('tRemaining');
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const disc = document.getElementById('disc');
+  const discArt = document.getElementById('discArt');
+  const discEtch = document.getElementById('discEtch');
+
+  /* ============ 唱片刻纹：36 道，10° 一圈，半径 80 ============ */
+  (function buildEtch() {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < 36; i++) {
+      const mark = document.createElement('i');
+      const a = i * 10;
+      mark.style.transform = 'rotate(' + a + 'deg) translateY(-80px)';
+      frag.appendChild(mark);
+    }
+    discEtch.appendChild(frag);
+  })();
+
+  /* ============ 音频 ============ */
+  const audio = new Audio();
+  audio.preload = 'metadata';
+  audio.volume = 0.9;
+
+  let index = 0;
+  let duration = TRACKS[0].duration;
+  let dragging = false;
+  let switching = false;
+
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  const fmt = (sec) => {
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  };
+
+  function renderTrack(t) {
+    titleEl.textContent = t.title;
+    metaEl.textContent = t.meta;
+
+    const len = Array.from(t.title).length;
+    titleEl.style.fontSize = len >= 8 ? '40px' : len >= 7 ? '44px' : '48.71px';
+
+    discArt.style.backgroundImage = 'url("' + t.img + '")';
+    document.title = t.title + ' · 和诗以歌';
+  }
+
+  function paintProgress(ratio) {
+    const w = progressEl.clientWidth;
+    playedEl.style.width = (ratio * w) + 'px';
+    knobEl.style.left = (ratio * w) + 'px';
+    progressEl.setAttribute('aria-valuenow', String(Math.round(ratio * duration)));
+  }
+
+  function paintTimes(cur) {
+    tElapsedEl.textContent = fmt(cur);
+    tRemainingEl.textContent = fmt(Math.max(0, duration - cur));
+  }
+
+  function syncFromAudio() {
+    if (dragging) return;
+    const cur = audio.currentTime || 0;
+    const d = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : duration;
+    duration = d;
+    paintProgress(d ? cur / d : 0);
+    paintTimes(cur);
+    progressEl.setAttribute('aria-valuemax', String(Math.round(d)));
+  }
+
+  function setPlayingUI(playing) {
+    stage.classList.toggle('is-playing', playing);
+    playBtn.setAttribute('aria-pressed', String(playing));
+    playBtn.setAttribute('aria-label', playing ? '暂停' : '播放');
+  }
+
+  /* ---------- 播放 ---------- */
+  function play() {
+    playBtn.classList.remove('idle');
+    audio.play().catch(() => {});
+  }
+
+  function pause() {
+    audio.pause();
+  }
+
+  function toggle() {
+    if (audio.paused) play();
+    else pause();
+  }
+
+  /* ---------- 换曲 ---------- */
+  function go(delta, autoplay) {
+    if (switching) return;
+    switching = true;
+
+    const wasPlaying = autoplay === undefined ? !audio.paused : autoplay;
+
+    disc.classList.add('is-in');
+    audio.pause();
+
+    window.setTimeout(() => {
+      index = (index + delta + TRACKS.length) % TRACKS.length;
+      const t = TRACKS[index];
+
+      audio.src = t.src;
+      audio.load();
+      duration = t.duration;
+
+      renderTrack(t);
+      paintProgress(0);
+      paintTimes(0);
+
+      disc.classList.remove('is-in');
+
+      window.setTimeout(() => {
+        switching = false;
+        if (wasPlaying) audio.play().catch(() => {});
+      }, 420);
+    }, 330);
+  }
+
+  /* ---------- 事件 ---------- */
+  playBtn.addEventListener('click', toggle);
+  prevBtn.addEventListener('click', () => go(-1));
+  nextBtn.addEventListener('click', () => go(1));
+
+  audio.addEventListener('play', () => setPlayingUI(true));
+  audio.addEventListener('pause', () => setPlayingUI(false));
+  audio.addEventListener('ended', () => go(1, true));
+  audio.addEventListener('timeupdate', syncFromAudio);
+  audio.addEventListener('loadedmetadata', () => {
+    if (isFinite(audio.duration) && audio.duration > 0) duration = audio.duration;
+    syncFromAudio();
+  });
+
+  /* 进度条拖动 */
+  function seekAt(clientX) {
+    const rect = progressEl.getBoundingClientRect();
+    const ratio = clamp((clientX - rect.left) / rect.width);
+    const target = ratio * duration;
+    paintProgress(ratio);
+    paintTimes(target);
+    audio.currentTime = target;
+  }
+
+  progressEl.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    progressEl.setPointerCapture(e.pointerId);
+    seekAt(e.clientX);
+  });
+
+  progressEl.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    seekAt(e.clientX);
+  });
+
+  progressEl.addEventListener('pointerup', (e) => {
+    dragging = false;
+    try { progressEl.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+
+  progressEl.addEventListener('pointercancel', () => { dragging = false; });
+
+  /* 键盘 */
+  progressEl.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); audio.currentTime = Math.min(duration, audio.currentTime + 5); syncFromAudio(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime - 5); syncFromAudio(); }
+    if (e.key === 'Home') { e.preventDefault(); audio.currentTime = 0; syncFromAudio(); }
+    if (e.key === 'End') { e.preventDefault(); audio.currentTime = duration - 0.15; syncFromAudio(); }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.progress')) return;
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    if (e.code === 'ArrowRight' && !e.target.closest('button')) { audio.currentTime = Math.min(duration, audio.currentTime + 5); syncFromAudio(); }
+    if (e.code === 'ArrowLeft' && !e.target.closest('button')) { audio.currentTime = Math.max(0, audio.currentTime - 5); syncFromAudio(); }
+    if (e.key === 'n' || e.key === 'N') go(1);
+    if (e.key === 'p' || e.key === 'P') go(-1);
+  });
+
+  /* ---------- 初始化 ---------- */
+  renderTrack(TRACKS[0]);
+  audio.src = TRACKS[0].src;
+  paintProgress(0);
+  paintTimes(0);
+  window.addEventListener('resize', () => {
+    const cur = audio.currentTime || 0;
+    paintProgress(duration ? cur / duration : 0);
+  });
+})();
+</script>
+</body>
+</html>

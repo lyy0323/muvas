@@ -1,0 +1,3367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>和诗以歌 数字黑胶画布</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231C1917'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23F4F0EC'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%231C1917'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="components.css" />
+  <style>
+    /* =========================================================
+       1. Design Tokens & Theme Palette (Yuye-pink)
+       ========================================================= */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      overscroll-behavior: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    /* Ambient Glow driven by Web Audio AnalyserNode */
+    .ambient-backdrop {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(88px);
+      will-change: transform, opacity;
+      transition: opacity 0.25s ease;
+    }
+
+    .ambient-orb--1 {
+      width: 56vw;
+      height: 56vw;
+      max-width: 720px;
+      max-height: 720px;
+      top: -18%;
+      left: -10%;
+      background: radial-gradient(circle, var(--theme-accent) 0%, transparent 70%);
+      opacity: calc(0.14 + var(--audio-energy) * 0.22);
+      transform: scale(calc(1 + var(--audio-energy) * 0.14));
+    }
+
+    .ambient-orb--2 {
+      width: 48vw;
+      height: 48vw;
+      max-width: 640px;
+      max-height: 640px;
+      bottom: -20%;
+      right: -8%;
+      background: radial-gradient(circle, var(--theme-accent) 0%, transparent 70%);
+      opacity: calc(0.1 + var(--audio-energy) * 0.18);
+      transform: scale(calc(1 + var(--audio-energy) * 0.12));
+    }
+
+    /* =========================================================
+       2. Fixed Minimalist Editorial Header
+       ========================================================= */
+    .floating-header {
+      position: fixed;
+      top: 14px;
+      touch-action: none;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(1280px, calc(100vw - 28px));
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      box-shadow: 0 14px 36px -18px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.18);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+    }
+
+    .brand-artist {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      border-radius: var(--radius-pill);
+      background: rgba(28, 25, 23, 0.05);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .pill-btn:hover {
+      background: var(--theme-accent-soft);
+      border-color: var(--theme-accent);
+    }
+
+    .pill-btn:active {
+      transform: scale(0.97);
+    }
+
+    .pill-btn.is-playing {
+      background: var(--theme-accent-soft);
+      border-color: var(--theme-accent);
+    }
+
+    .timecode {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* =========================================================
+       3. Infinite Canvas Viewport & World Layer (all breakpoints)
+       ========================================================= */
+    .canvas-viewport {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      cursor: grab;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+      background-size: 28px 28px;
+      background-position: 0px 0px;
+      touch-action: none;
+    }
+
+    .canvas-viewport.is-panning {
+      cursor: grabbing;
+    }
+
+    .canvas-viewport.space-ready {
+      cursor: grab;
+    }
+
+    .canvas-world {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    /* 桌面：卡片由 JS 按 data-col/row 绝对定位，空位保留、不自动补位，坐标可为负 */
+    .spatial-grid {
+      position: relative;
+      width: 0;
+      height: 0;
+    }
+
+    /* 窄屏只压缩 header，画布本身在所有尺寸下都是同一套无限画布 */
+    @media (max-width: 768px) {
+      .floating-header {
+        top: 10px;
+        width: calc(100vw - 20px);
+        padding: 8px 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      /* 手机上让 header 收成一行，把更多高度留给画布 */
+      .brand-artist {
+        display: none;
+      }
+    }
+
+    /* =========================================================
+       4. Widget Card, Top Drag Zone & Bottom-Right Resize Handle
+       ========================================================= */
+    .widget-card,
+    .drag-placeholder {
+      position: relative;
+      border-radius: var(--radius-card);
+    }
+
+    /* 卡片壳的视觉部分在 components.css 的 .c-card；这里只保留画布行为 */
+    .widget-card {
+      container-type: size;
+      container-name: widget;
+      cursor: default;
+    }
+
+    .widget-card:not(.is-active-cluster):hover {
+      box-shadow: var(--shadow-card-hover);
+      border-color: rgba(28, 25, 23, 0.12);
+    }
+
+    /* --- Top Edge Long-Press Drag-to-Reorder Zone --- */
+    .drag-handle-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .drag-handle-zone:active {
+      cursor: grabbing;
+    }
+
+    .drag-pill {
+      width: 34px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(28, 25, 23, 0.16);
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, width 0.2s ease;
+    }
+
+    .c-card--dark .drag-pill {
+      background: rgba(255, 255, 255, 0.38);
+    }
+
+    .widget-card:hover .drag-pill,
+    .drag-handle-zone:hover .drag-pill {
+      opacity: 0.85;
+      transform: translateY(0);
+    }
+
+    /* 触摸设备：拖拽区/缩放手柄在屏幕上至少 40px，并常显拖拽提示 */
+    @media (pointer: coarse) {
+      .drag-handle-zone {
+        height: max(28px, calc(40px / var(--cam-scale, 1)));
+      }
+      .drag-pill {
+        opacity: 0.55;
+        transform: translateY(0);
+      }
+      .widget-card .resize-handle {
+        width: max(30px, calc(40px / var(--cam-scale, 1)));
+        height: max(30px, calc(40px / var(--cam-scale, 1)));
+      }
+    }
+
+    .widget-card.is-holding .drag-pill {
+      opacity: 1;
+      background: var(--theme-accent);
+      width: 44px;
+    }
+
+    .widget-card.is-lifted {
+      z-index: 90 !important;
+      box-shadow: var(--shadow-lifted), 0 0 0 2.5px var(--theme-accent) !important;
+      border-color: var(--theme-accent) !important;
+      pointer-events: none;
+      will-change: transform, left, top;
+    }
+
+    .drag-placeholder {
+      background: var(--theme-accent-soft);
+      border: 2px dashed var(--theme-accent);
+    }
+
+    /* --- Bottom-Right Drag-to-Resize Handle --- */
+    .resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 30px;
+      height: 30px;
+      z-index: 26;
+      cursor: nwse-resize;
+      touch-action: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 7px;
+      opacity: 0.32;
+      transition: opacity 0.2s ease;
+    }
+
+    .widget-card:hover .resize-handle,
+    .resize-handle:hover,
+    .widget-card.is-resizing .resize-handle {
+      opacity: 0.95;
+    }
+
+    .resize-handle svg {
+      width: 13px;
+      height: 13px;
+      color: var(--text-secondary);
+      transition: color 0.2s ease;
+    }
+
+    .c-card--dark .resize-handle svg {
+      color: rgba(248, 242, 245, 0.85);
+    }
+
+    .resize-handle:hover svg,
+    .widget-card.is-resizing .resize-handle svg {
+      color: var(--text-primary);
+    }
+
+    .c-card--dark .resize-handle:hover svg {
+      color: var(--theme-accent);
+    }
+
+    /* Translucent theme-accent snap preview overlay (strictly hidden when inactive) */
+    .resize-preview-ghost {
+      position: fixed;
+      z-index: 80;
+      display: none;
+      opacity: 0;
+      pointer-events: none;
+      border-radius: var(--radius-card);
+      background: var(--theme-accent-soft);
+      border: 2px dashed var(--theme-accent);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+      transition:
+        width 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+        height 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .resize-preview-ghost.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    /* =========================================================
+       15. Cluster Map: Record / Story / Visual + Track Panel
+       ========================================================= */
+    /* --- equalizer bars (panel) --- */
+    .eq-bars {
+      display: none;
+      align-items: flex-end;
+      gap: 2px;
+      height: 12px;
+    }
+
+    .is-playing .eq-bars {
+      display: inline-flex;
+    }
+
+    .eq-bars i {
+      width: 2px;
+      height: 5px;
+      border-radius: 1px;
+      background: var(--cluster-accent);
+      transform-origin: bottom center;
+      animation: eqPulse 0.9s ease-in-out infinite;
+    }
+
+    .eq-bars i:nth-child(2) {
+      height: 9px;
+      animation-delay: 0.18s;
+    }
+
+    .eq-bars i:nth-child(3) {
+      height: 7px;
+      animation-delay: 0.36s;
+    }
+
+    @keyframes eqPulse {
+      0%, 100% { transform: scaleY(0.45); }
+      50% { transform: scaleY(1.1); }
+    }
+
+    /* --- track index panel --- */
+    .now-playing-label {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tracks-btn-text {
+      color: var(--text-muted);
+    }
+
+    .track-panel {
+      position: fixed;
+      top: 76px;
+      right: 14px;
+      z-index: 60;
+      width: min(346px, calc(100vw - 28px));
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      box-shadow: 0 22px 60px -24px rgba(45, 34, 62, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px) scale(0.98);
+      transform-origin: top right;
+      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .track-panel.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+    }
+
+    .track-panel-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .track-panel-cover {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .track-panel-meta {
+      min-width: 0;
+    }
+
+    .track-panel-title {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .track-panel-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .track-panel-list {
+      list-style: none;
+      margin-top: 8px;
+      max-height: min(54vh, 420px);
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .track-panel-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .track-panel-item {
+      display: grid;
+      grid-template-columns: 20px 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .track-panel-item:hover {
+      background: var(--theme-accent-soft);
+    }
+
+    .track-panel-item.is-active {
+      background: var(--theme-accent-soft);
+    }
+
+    .tp-num {
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .track-panel-item.is-active .tp-num {
+      color: var(--cluster-accent);
+    }
+
+    .tp-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .tp-name {
+      font-family: var(--font-serif);
+      font-size: 13.5px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-panel-item.is-active .tp-name {
+      font-weight: 700;
+    }
+
+    .tp-dur {
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+    }
+
+    .track-panel-foot {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+      text-align: right;
+    }
+
+    .track-panel-foot a {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+
+    .track-panel-foot a:hover {
+      color: var(--text-primary);
+    }
+
+    /* --- bottom hint --- */
+    .canvas-hint {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 20;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
+      background: rgba(244, 240, 236, 0.78);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 900px) {
+      .track-panel {
+        top: 72px;
+        right: 12px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .tracks-btn-text {
+        display: none;
+      }
+      .now-playing-label {
+        max-width: 84px;
+      }
+      .canvas-hint {
+        display: none;
+      }
+      .track-panel {
+        width: calc(100vw - 24px);
+        left: 12px;
+        right: 12px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .btn-label {
+        display: none;
+      }
+      .pill-btn {
+        padding: 6px 10px;
+      }
+      .now-playing-label {
+        max-width: 66px;
+      }
+    }
+
+  </style>
+  </head>
+<body>
+  <div class="ambient-backdrop" aria-hidden="true">
+    <div class="ambient-orb ambient-orb--1"></div>
+    <div class="ambient-orb ambient-orb--2"></div>
+  </div>
+
+  <!-- Resize Snap Preview Ghost -->
+  <div class="resize-preview-ghost" id="resizePreviewGhost" aria-hidden="true"></div>
+
+  <!-- Fixed Editorial Header -->
+  <header class="floating-header">
+    <div class="brand-group">
+      <span class="brand-title">和诗以歌</span>
+      <span class="brand-artist">上海交通大学国学社 乐府部</span>
+    </div>
+
+    <div class="header-controls">
+      <button class="pill-btn" id="headerPlayBtn" type="button" aria-label="播放或暂停">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" id="headerPlayIcon">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+        <span class="timecode" id="headerTimecode">00:00 / 04:13</span>
+      </button>
+
+      <button class="pill-btn" id="btnTracks" type="button" aria-expanded="false" aria-controls="trackPanel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4 6h16M4 12h16M4 18h10" />
+        </svg>
+        <span class="tracks-btn-text">曲目</span>
+        <span class="now-playing-label" id="nowPlayingLabel">大东</span>
+      </button>
+
+      <button class="pill-btn" id="btnReturnCentroid" type="button" aria-label="回到质心">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="7" />
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+        </svg>
+        <span class="btn-label">回到质心</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Track Index Panel -->
+  <div class="track-panel" id="trackPanel" aria-hidden="true">
+    <div class="track-panel-head">
+      <img class="track-panel-cover" src="assets/img/album.jpg" alt="《和诗以歌》专辑封面" />
+      <div class="track-panel-meta">
+        <div class="track-panel-title">和诗以歌</div>
+        <div class="track-panel-sub">六首 / 点击飞往对应画布</div>
+      </div>
+    </div>
+    <ol class="track-panel-list" id="trackPanelList" aria-label="专辑曲目"></ol>
+    <div class="track-panel-foot"><a href="ui.html">UI 组件库 ↗</a></div>
+  </div>
+
+  <!-- Infinite Canvas Viewport -->
+  <main class="canvas-viewport" id="canvasViewport">
+    <div class="canvas-world" id="canvasWorld">
+      <section class="spatial-grid" id="spatialGrid" aria-label="音乐空间画布">
+        <!-- 六组曲目卡片由脚本生成 -->
+      </section>
+    </div>
+  </main>
+
+  <div class="canvas-hint" aria-hidden="true">拖动画布 / 点编号飞往单曲 / 点唱片播放</div>
+
+  <script>
+    (() => {
+      'use strict';
+      const ALBUM = {
+        title: '和诗以歌',
+        artist: '上海交通大学国学社 乐府部',
+        cover: 'assets/img/album.jpg',
+        coverAlt: '《和诗以歌》专辑封面',
+        tracks: [
+          {
+            id: "dadong",
+            title: "大东",
+            subtitle: "《诗经》小雅",
+            artist: "林雨夜 / 木狸奴",
+            date: "2024.05.17",
+            chapter: "悲歌",
+            quote: "“维天有汉，监亦有光”",
+            image: "assets/img/stories/dadong.jpg",
+            accent: "#A8452C",
+            accentSoft: "rgba(168, 69, 44, 0.14)",
+            src: "assets/audio/dadong.m4a",
+            duration: 253.128,
+            credits: [["词","《诗经》小雅"],["曲","木猫、林雨夜"],["编曲","林雨夜"],["唱","ACE小夜"],["出品","上海交通大学国学社"]],
+            story: [
+              { h: false, t: "“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。" },
+              { h: true, t: "若合一契的悲歌" },
+              { h: false, t: "故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。" },
+              { h: false, t: "这是三千年前殷商遗民的歌谣：天上的银河灿烂，地上的征役无休；贵族享乐，百姓赤贫。这种跨越时空的苦闷，让木猫瞬间产生了一种“若合一契”的战栗——他仿佛听懂了那些仰望星空的古人。" },
+              { h: true, t: "灵感与格律的交响" },
+              { h: false, t: "《大东》的原诗结构奇特，前四段沉郁质实，后三段却瑰丽奇崛，仿佛是由两篇不同的作品拼接而成。创作的过程也呼应了这种结构。" },
+              { h: false, t: "在那次灵感迸发的洗澡间隙，木猫脑海中突然闪过黄霑《沧海一声笑》的豪迈，决定用宫商角徵羽的五声音阶起头，一气呵成谱写了后半段的高潮——既不可张扬宏大，也不能流于琐碎，那是压抑后的爆发。" },
+              { h: false, t: "而前半段的叙事，则由林雨夜（椰椰）深度参与。她用国学社一贯坚持的“依字行腔”原则，对旋律进行了精细的打磨与调整，弥补了原本音准上的瑕疵，让古老的文字在现代的律动中找到了最准确的咬字与呼吸。" },
+              { h: true, t: "四点半的绝响" },
+              { h: false, t: "那是一个疯狂的夜晚。两位创作者，一间小房间，床与钢琴，凌晨四点半。“用情绪的花火拼凑出曲调”，木猫说，即便后来远渡重洋，拥有了更好的独立空间，他也再没能复刻那一晚纯粹的无拘表达。" },
+              { h: false, t: "《大东》不仅是一首复古之作，它更像是一个现代灵魂与古老历史的握手。闭上眼睛，你似乎能听到那来自东方的歌谣：他们痛苦，他们悲歌，但他们依然在星空下，顶天立地地活着。" },
+            ],
+            lines: [
+              [0.5, "大 东"],
+              [5.5, "作词：《诗经》"],
+              [10.5, "作曲：木猫、林雨夜"],
+              [15.5, "编曲：林雨夜"],
+              [20.5, "演唱：ACE小夜"],
+              [25.5, "出品：上海交通大学国学社"],
+              [30.5, "2024年5月"],
+              [34.14, "有饛簋飧 有捄棘匕"],
+              [41.31, "周道如砥 其直如矢"],
+              [48.42, "君子所履 小人所视"],
+              [54.12, "睠言顾之 潸焉出涕"],
+              [62.79, "小东大东 杼柚其空"],
+              [70.11, "纠纠葛屦 可以履霜"],
+              [77.28, "佻佻公子 行彼周行"],
+              [84.54, "既往既来 使我心疚"],
+              [91.74, "有冽氿泉 无浸获薪"],
+              [98.82, "契契寤叹 哀我惮人"],
+              [105.99, "薪是获薪 尚可载也"],
+              [111.87, "哀我惮人 亦可息也"],
+              [120.48, "东人之子 职劳不来"],
+              [127.59, "西人之子 粲粲衣服"],
+              [134.85, "舟人之子 熊罴是裘"],
+              [141.99, "私人之子 百僚是试"],
+              [149.25, "或以其酒 不以其浆"],
+              [155.01, "鞙鞙佩璲 不以其长"],
+              [163.68, "维天有汉 监亦有光"],
+              [168.87, "跂彼织女 终日七襄"],
+              [177.96, "虽则七襄 不成报章"],
+              [185.97, "睆彼牵牛 不以服箱"],
+              [192.54, "东有启明 西有长庚"],
+              [199.71, "有捄天毕 载施之行"],
+              [206.94, "维南有箕 不可以簸扬"],
+              [214.11, "维北有斗 不可以挹酒浆"],
+              [221.34, "维南有箕 载翕其舌"],
+              [229.47, "维北有斗 西柄之揭"],
+            ]
+          },
+          {
+            id: "weijieyichangan",
+            title: "未解忆长安",
+            subtitle: "杜甫《月夜》",
+            artist: "林雨夜",
+            date: "2025.01.19",
+            chapter: "音韵",
+            quote: "“唱得，和念的一样好听”",
+            image: "assets/img/stories/weijieyichangan.jpg",
+            accent: "#4F6480",
+            accentSoft: "rgba(79, 100, 128, 0.14)",
+            src: "assets/audio/weijieyichangan.m4a",
+            duration: 246.561,
+            credits: [["词","【唐】杜甫"],["曲","林雨夜"],["编曲","林雨夜、网易天音"],["唱","林雨夜、ACE鸾明"],["出品","上海交通大学国学社"]],
+            story: [
+              { h: false, t: "在国学社，音韵与格律始终是大家敬畏的核心。作曲者林雨夜自2019年起，便坚持在创作中探索“依字行腔”，并将这一理念带入了乐府部。但一个问题始终萦绕在大家心中：“古诗词的格律到底有什么意义？我们能用现代的音乐把它们唱出来吗？”" },
+              { h: false, t: "2022年下半年的一天，为了回答这个“终极问题”，她决定不做理论探讨，而是直接交出一份答卷。" },
+              { h: false, t: "她选择了诗圣杜甫的《月夜》，一首格律严谨的五言律诗，以此为“考题”，创作了一段demo。这次创作的核心原则只有一个——彻底的“依字行腔”。她没有添加华丽的编曲，也没有刻意设计抓耳的旋律，而是让曲调完全服务于汉字本身的四声。当“今夜鄜州月”的“夜”字（去声）自然下降，当“香雾云鬟湿”的“湿”字（入声，现代读阴平）自然收束，奇妙的事情发生了。" },
+              { h: false, t: "“唱起来真的和普通话念起来差不多。”——这句评价，恰恰是对这份demo最高的赞扬。它证明了古人传承千年的“格律”，并非束缚创作的枷锁，而是汉语与生俱来的音乐蓝图。诗词的平仄起伏，本身就是旋律。" },
+              { h: false, t: "这个小样在社团内部流传，它所蕴含的对语言本身的尊重和“人文关怀”触动了大家。2025年初，这个珍贵的demo被重新制作和打磨，正式定名为《未解忆长安》发布。" },
+              { h: false, t: "正如一位听众的留言：“谢谢椰椰做出这么好的音乐，每次听都感觉自己平静下来。”这份平静，或许就来自于旋律与语言最本真的和谐。" },
+            ],
+            lines: [
+              [0.0, "作词：【唐】杜甫"],
+              [0.4, "作曲：林雨夜"],
+              [0.8, "编曲：林雨夜、网易天音"],
+              [1.2, "演唱：林雨夜、ACE鸾明"],
+              [1.6, "出品：上海交通大学国学社"],
+              [2.0, "2025年1月"],
+              [2.191, "今夜鄜州月"],
+              [6.613, "闺中只独看"],
+              [50.531, "今夜鄜州月"],
+              [55.356, "闺中只独看"],
+              [60.016, "遥怜小儿女"],
+              [64.526, "未解忆长安"],
+              [69.167, "香雾云鬟湿"],
+              [73.698, "清辉玉臂寒"],
+              [78.342, "何时倚虚幌"],
+              [82.953, "双照泪痕干"],
+              [87.586, "今夜鄜州月"],
+              [92.259, "闺中只独看"],
+              [96.82, "遥怜小儿女"],
+              [101.521, "未解忆长安"],
+              [106.065, "香雾云鬟湿"],
+              [110.663, "清辉玉臂寒"],
+              [115.339, "何时倚虚幌"],
+              [120.033, "双照泪痕干"],
+              [124.0, "（白）"],
+              [124.721, "今夜鄜州月"],
+              [129.051, "闺中只独看"],
+              [133.619, "遥怜小儿女"],
+              [138.185, "未解忆长安"],
+              [142.889, "香雾云鬟湿"],
+              [147.573, "清辉玉臂寒"],
+              [152.121, "何时倚虚幌"],
+              [156.391, "双照泪痕干"],
+              [198.0, "（唱）"],
+              [198.312, "今夜鄜州月"],
+              [202.97, "闺中只独看"],
+              [207.534, "遥怜小儿女"],
+              [212.088, "未解忆长安"],
+              [216.816, "香雾云鬟湿"],
+              [221.372, "清辉玉臂寒"],
+              [226.017, "何时倚虚幌"],
+              [230.67, "双照泪痕干"],
+            ]
+          },
+          {
+            id: "laichun",
+            title: "来春可拟共兰舟",
+            subtitle: "衢州 上海",
+            artist: "林雨夜 / 造林",
+            date: "2025.07.28",
+            chapter: "约定",
+            quote: "“彼岸休行多劫火，来春可拟共兰舟”",
+            image: "assets/img/stories/laichun.jpg",
+            accent: "#8A5A79",
+            accentSoft: "rgba(138, 90, 121, 0.14)",
+            src: "assets/audio/laichun.m4a",
+            duration: 220.497,
+            credits: [["词","造林、林雨夜"],["曲","林雨夜"],["唱","鸾明、东方栀子_晓"],["题献","造林"]],
+            story: [
+              { h: false, t: "《来春可拟共兰舟》的背后，是一个关于守护与承诺的故事。" },
+              { h: false, t: "故事的主角是国学社一位特别的“编外人员”。她因偶然的契机加入，一直默默地为社团提供支持。故事的开端，是她远在衢州游览时写下的一首七律，诗中“醉卧州衢思上海，神离海上望衢州”的句子，遥寄着她对上海朋友们的思念。" },
+              { h: false, t: "一年后，一个惊险的插曲猝然而至。远在上海的国学社诸君惊闻她陷入了生命垂危的困境。在焦急万分、四处联系打探安危的时刻，林雨夜含泪写下了第二首诗。她采用了那位朋友原诗的韵脚——这在古典诗词中被称为“次韵”，本身就带有一种“你来我往”的深切回应。" },
+              { h: false, t: "这首诗，是一份最沉痛的祈愿。诗中写道：“彼岸休行多劫火，来春可拟共兰舟？”这不仅是一句问话，更是一个拼尽全力的锚点。它试图为一个深陷绝望、看不到未来希望的人，重新构建一个具体的、关于“下个春天”的期待。“无常若是有情客，也请归人到此州。”（如果无常懂得哪怕一点点感情，也请让远行的人回到这里来吧。）" },
+              { h: false, t: "万幸，这份祈愿得到了回应。朋友转危为安。" },
+              { h: false, t: "又过了一年，两位朋友终于团聚。第三首“次韵”诗，记录下这“于今携手小船头”的动人场景。经历了“人事凋零无去路”的幽谷，才更懂“兰心缱绻愿同舟”的珍贵。暖风缓缓地吹过，正如同《论语》中“莫春者，春服既成，冠者五六人，童子六七人，浴乎沂，风乎舞雩，咏而归”的图景，是一种历经风雨后的平静与新生。因此，这首歌被设计为一场两位歌者的对唱，并以“依字行腔”的旋律，去承载这三首格律诗的重量。它所唱的，不只是音韵，更是一个用诗词和友情“约到”的春天。" },
+            ],
+            lines: [
+              [3.38, "作词：造林、林雨夜"],
+              [5.38, "演唱：鸾明（女1）"],
+              [7.38, "演唱：东方栀子_晓（女2）"],
+              [9.38, "制作：林雨夜"],
+              [11.38, "谨以此献给造林"],
+              [13.38, "（女1）"],
+              [13.47, "水亭门下巷中游"],
+              [19.2, "西县路前街尽头"],
+              [25.32, "拒马横刀抗烽火"],
+              [31.35, "高墙阔水护哀愁"],
+              [37.29, "花坊落寞行长岸"],
+              [43.41, "闹市伶仃坐小舟"],
+              [49.32, "醉卧州衢思上海"],
+              [55.11, "神离海上望衢州"],
+              [61.38, "（女2）"],
+              [61.47, "月自长明蝶自游"],
+              [67.2, "风催梨雨洒街头"],
+              [73.38, "孤窗倚我同垂泪"],
+              [79.32, "白鬓是君曾遣愁"],
+              [85.38, "彼岸休行多劫火"],
+              [91.29, "来春可拟共兰舟"],
+              [97.32, "无常若是有情客"],
+              [103.35, "也请归人到此州"],
+              [132.587, "（合）"],
+              [133.38, "彼岸休行多劫火"],
+              [139.32, "来春可拟共兰舟"],
+              [145.29, "无常若是有情客"],
+              [151.35, "也请归人到此州"],
+              [157.08, "（女1）"],
+              [157.32, "曾拟来春共此游"],
+              [158.775, "（女2）"],
+              [158.96, "曾拟来春共此游"],
+              [163.5, "（女1）"],
+              [163.71, "于今携手小船头"],
+              [165.12, "（女2）"],
+              [165.21, "于今携手小船头"],
+              [169.26, "（合）"],
+              [169.32, "轻摇双桨风吹软"],
+              [175.11, "长忆三秋雨打愁"],
+              [181.32, "人事凋零无去路"],
+              [187.35, "兰心缱绻愿同舟"],
+              [193.32, "临行应许他年聚"],
+              [199.35, "约到江南第一州"],
+              [205.29, "约到江南第一州"],
+            ]
+          },
+          {
+            id: "suliusha",
+            title: "溯流沙",
+            subtitle: "文脉 七十万页",
+            artist: "林雨夜 / 归荑",
+            date: "2021.12.26",
+            chapter: "匠心",
+            quote: "“循一沿纹理繁杂，拓一笔往日锋芒”",
+            image: "assets/img/stories/suliusha.jpg",
+            accent: "#5F7A63",
+            accentSoft: "rgba(95, 122, 99, 0.14)",
+            src: "assets/audio/suliusha.m4a",
+            duration: 244.0,
+            credits: [["词","归荑"],["曲","林雨夜"],["唱","ACE小夜"],["监制","洪若馨"],["出品","上海交通大学国学社"]],
+            story: [
+              { h: true, t: "缘起：“这已经不只是作业了”" },
+              { h: false, t: "歌曲的监制，来自上海交通大学文创学院的洪若馨，在一次关于“上海图书馆痛点解决方案”的课程作业中，选择了一个鲜为人知的切入点——古籍文献修复。当她采访修复老师时，对方平静地说：“他们所做的只是希望让人们形成文化尊重。”" },
+              { h: false, t: "这句话深深打动了若馨。她意识到，这群“古籍医生”日复一日地埋首故纸，在“寂寂寒窗”中“打点模糊文字”，所求的并非功名，而仅仅是一份尊重。若馨在后来的分享中写道：“这个作业对我来说就已经不是作业了，是发自内心的想去做一些东西。”" },
+              { h: true, t: "集结：“国学社有很多很厉害的人”" },
+              { h: false, t: "怀着这份感动，若馨带着她的“大方案”——包括展览、绘本，以及一个核心的“歌曲”——在国学社发出了求助。她知道这里“可以写诗词歌赋”，也听说大家“打算开始自己尝试作曲”。" },
+              { h: false, t: "这封真诚的“小作文”如同一颗石子投入湖中，激起了国学社成员们内心深处的共鸣。这不仅是一个技术上的挑战，更是一次“有深意的事情”。" },
+              { h: false, t: "大家的热情被点燃了。作词人归荑接过了重任，没有停留在空泛的想象，而是深入研究了若馨带回的古籍修复资料，将“函套”、“拓片”、“研墨”、“挑纹理”等复杂的工序，化作“挽一抔故土流沙”、“拓一笔往日锋芒”的诗意表达。作曲与编曲林雨夜则用悠扬的古风旋律，将这份跨越千年的匠心与孤寂娓娓道来。" },
+              { h: true, t: "新生：乐府部的诞生" },
+              { h: false, t: "从一个人的感动，到一个团队的共创，《溯流沙》的创作过程，展现了社团成员间惊人的协作力与共同的人文关怀。大家的目标高度一致：不仅要创作一首好听的歌，更要传递那份“文化尊重”的内核。" },
+              { h: false, t: "更具意义的是，在《溯流沙》的创作过程中，国学社内部这股对音乐创作的热情与力量不断汇聚，最终催生了“乐府部”的正式诞生。2021年12月5日，乐府部正式成立，由陈鲲鹏任部长、李雨桐任副部长。" },
+              { h: false, t: "《溯流沙》不仅是乐府部的开山之作，它本身也成为了一个最佳范本：它源自对传统文化的深度关怀，并由一群志同道合的年轻人协作完成。这首歌的背后，是一个社团从自发的情感共鸣，走向有建制、有传承的文化实践的生动故事。" },
+            ],
+            lines: [
+              [15.8, "监制：洪若馨"],
+              [16.8, "出品：上海交通大学国学社"],
+              [17.8, "2021年12月"],
+              [19.96, "挽一抔故土流沙"],
+              [26.17, "溯一段他乡旧话"],
+              [31.65, "几度春秋如何催生白发"],
+              [37.98, "上图书残忆寻回答"],
+              [44.58, "循一沿纹理繁杂"],
+              [50.7, "挑一缕晨曦勾画"],
+              [56.46, "正楷小豪下研一盏墨茶"],
+              [62.54, "敬那年烛火与他"],
+              [68.53, "月照千秋万里 明月总相似"],
+              [74.99, "打点模糊文字 凭信作荐纸"],
+              [81.342, "跋涉山水远来衔枯枝"],
+              [88.232, "只为来春再与你相识"],
+              [119.77, "滴一抹月色溶浆"],
+              [125.996, "拓一笔往日锋芒"],
+              [131.602, "金石雕栏刻录雨雪风霜"],
+              [137.828, "记往昔不过是平常"],
+              [144.451, "习一师井井有方"],
+              [150.392, "耐一生寂寂寒窗"],
+              [155.832, "迁徙入七十万页的容光"],
+              [162.334, "将中华文脉点亮"],
+              [168.15, "月照千秋万里 明月总相似"],
+              [174.528, "打点模糊文字 凭信作荐纸"],
+              [181.444, "跋涉山水远来衔枯枝"],
+              [187.172, "只为来春再与你相识"],
+              [192.86, "心随千言万语 鉴心总相思"],
+              [199.156, "密缝断句残篇 旧约不若此"],
+              [205.987, "落笔成书阅尽天下事"],
+              [214.508, "你我叙不完一寸青史"],
+              [227.33, "开一朵犹抱琵琶"],
+              [233.531, "溯一粒沧海流沙"],
+            ]
+          },
+          {
+            id: "yuhudie",
+            title: "玉蝴蝶 秋梦",
+            subtitle: "词牌 玉蝴蝶",
+            artist: "林雨夜",
+            date: "2019.09",
+            chapter: "最早的一首 编者按",
+            quote: "“天欲晓，水露凝烟。”",
+            image: "assets/img/stories/yuhudie.jpg",
+            accent: "#9A7838",
+            accentSoft: "rgba(154, 120, 56, 0.15)",
+            src: "assets/audio/yuhudie.m4a",
+            duration: 196.272,
+            credits: [["词曲","林雨夜"],["编曲","林雨夜"],["唱","ACE小夜"]],
+            story: [
+              { h: false, t: "《玉蝴蝶 秋梦》写于 2019 年 9 月，是这批作品里最早的一首，早于乐府部成立。词曲、编曲由林雨夜完成，ACE 小夜演唱。" },
+              { h: false, t: "词牌《玉蝴蝶》本就多写离情别绪，这一首把秋夜写得更冷：烛尽、倦意绵延、残月孤悬，梦境与醒来的边界被抹掉了。" },
+              { h: false, t: "四周年图文没有收录这首歌的创作故事与专属插画，这里以四周年主视觉作底；歌本身仍按原速收在《和诗以歌》里。" },
+            ],
+            lines: [
+              [25.28, "守影江南秋夜"],
+              [29.89, "烛尽明灭"],
+              [32.75, "倦意绵延"],
+              [36.4, "踏叶乘风"],
+              [41.92, "俶尔霞晚枫前"],
+              [47.75, "破虚冰"],
+              [50.17, "潸然泪目"],
+              [53.37, "抒离恨"],
+              [55.87, "桂洒盈肩"],
+              [59.14, "怨啼鹃"],
+              [62.01, "倚窗泣血"],
+              [64.88, "搅我心园"],
+              [70.58, "阑珊"],
+              [72.71, "勉为追忆"],
+              [75.63, "恍如隔世"],
+              [78.34, "旧绪凄然"],
+              [82.02, "寄醉消忧"],
+              [87.75, "无端梦里镜长圆"],
+              [93.646, "夜行收"],
+              [95.93, "朝霞映冷"],
+              [99.12, "天欲晓"],
+              [101.53, "水露凝烟"],
+              [104.82, "再难眠"],
+              [107.71, "梳妆起坐"],
+              [111.2, "残月孤悬"],
+              [127.6, "阑珊"],
+              [129.71, "勉为追忆"],
+              [132.56, "恍如隔世"],
+              [135.55, "旧绪凄然"],
+              [138.94, "寄醉消忧"],
+              [144.72, "无端梦里镜长圆"],
+              [150.49, "夜行收"],
+              [153.11, "朝霞映冷"],
+              [156.12, "天欲晓"],
+              [158.66, "水露凝烟"],
+              [161.82, "再难眠"],
+              [164.89, "梳妆起坐"],
+              [168.33, "残月孤悬"],
+            ]
+          },
+          {
+            id: "jushaochenjiangnan",
+            title: "聚少趁江南",
+            subtitle: "江南 灯火",
+            artist: "林雨夜 / 花桐",
+            date: "2025.11.18",
+            chapter: "联结",
+            quote: "“晚世拘多妨海外，今生聚少趁江南”",
+            image: "assets/img/stories/jushaochenjiangnan.jpg",
+            accent: "#B0756F",
+            accentSoft: "rgba(176, 117, 111, 0.15)",
+            src: "assets/audio/jushaochenjiangnan.mp3",
+            duration: 255.884,
+            credits: [["词","林雨夜、花桐"],["曲","林雨夜"],["唱","ACE鸾明、东方栀子_晓"],["出品","上海交通大学国学社乐府部"]],
+            story: [
+              { h: false, t: "《聚少趁江南》是一首极具实验性质的“集句”歌曲。全曲歌词并非全新创作，而是从两位主角多年来相互赠答、唱和的三十余首诗词作品中，精选摘录并重新“剪辑”而成。这首歌像是一部情感的蒙太奇，将“东中院小窗”的同窗记忆、“巴山夜雨”的异地相思，以及无数个“灯轻帐暖”的瞬间，拼贴成一幅完整的流动的画卷。它不仅是一首歌曲，更是两位诗人用平仄与韵脚堆叠出的一份厚重的编年史。" },
+              { h: true, t: "拼贴：碎金重铸的“集句”艺术" },
+              { h: false, t: "“集句”是中国古典文学中一种极高难度的创作方式，要求作者将前人（或自己）的零散诗句，重新组合成意脉贯通的新篇。 《聚少趁江南》将这一传统做到了极致。歌词中，“银汉漂漂”的宏大天象与“雨碎春衫薄”的细腻体感无缝衔接，每一句都来自不同的时空，却在旋律中奇迹般地指向了同一个主题——离别与重逢。这三十余首诗词，原本散落在聊天记录、手稿和朋友圈的角落，此刻却如碎金重铸，被赋予了全新的生命。" },
+              { h: true, t: "唱和：两颗灵魂的加密通话" },
+              { h: false, t: "在歌词的字里行间，隐藏着大量只有两位当事人才懂的“密码”。从“那年冬日夜，海棠花下坐”的静谧，到“万里丹山路，巴山与谁话”的遥望，每一句都是一次灵魂的呼应。 这不仅是文学上的切磋，更是一种深情的生活记录。当语言不足以表达思念时，她们选择用诗词对话。这种“唱和”的传统，在现代快节奏的语境下显得尤为奢侈和珍贵。这首歌，就是她们将无数次“见字如面”的瞬间，凝结成的永恒琥珀。" },
+              { h: true, t: "惜时：苦芯燃尽后的余温" },
+              { h: false, t: "“苦芯燃剩一丝甘，今生聚少趁江南。” 这句反复吟唱的Hook，是整首歌的题眼。在经历了“波声衔信小”的等待和“顾影入烟深”的孤独后，所有的情绪最终落地于对当下的珍惜。 哪怕是“东中院”的一扇小窗，哪怕是“狸奴”慵懒的一瞥，只要是“聚时”，便值得用尽全力去铭记。人生如寄，聚散无常，唯有趁着这美好的时光，哪怕只有那一杯“余温”，也要痛快地共饮。" },
+            ],
+            lines: [
+              [19.91, "演唱：ACE鸾明/东方栀子_晓"],
+              [22.91, "出品：上海交通大学国学社乐府部"],
+              [25.91, "2025年11月"],
+              [29.91, "银汉漂漂 蜉蝣寄梗"],
+              [36.81, "纤瓶谢了 半江晴"],
+              [43.2, "雨碎春衫薄 楚水接云平"],
+              [50.13, "孤舟欲往 浪湿青襟"],
+              [58.14, "寒暑养养草木初青"],
+              [65.01, "枯杖新痕露复盈"],
+              [71.46, "波声衔信小顾影入烟深"],
+              [78.3, "乔木含情久伫霜襟"],
+              [85.44, "来此世间皆过客"],
+              [88.98, "灯轻帐暖指深萦"],
+              [93.0, "玉兰未落时姑妄待小妖说与听"],
+              [99.57, "想卿踏雨传怀抱"],
+              [103.14, "愿你安眠罗幕中"],
+              [107.07, "万里丹山路巴山与谁话碧城灯"],
+              [114.63, "露气氤氲往来渐惯"],
+              [121.68, "夜灯朗照失天蓝"],
+              [127.8, "春风吹不展留神阶下路"],
+              [134.85, "瑶盏怀情圆鲸正酣"],
+              [142.86, "不语由温去来偶错"],
+              [150.39, "寒夕因卿借酒耽"],
+              [155.94, "那年冬日夜海棠花下坐"],
+              [163.08, "相倚心安月色正寒"],
+              [170.19, "风因花气入淮南"],
+              [173.7, "余温暂傍一杯甘"],
+              [177.66, "此夜桥头水何时到洛城许华年"],
+              [184.32, "苦芯燃剩一丝甘"],
+              [187.77, "今生聚少趁江南"],
+              [191.82, "聚时香枕在执手胭脂草付风烟"],
+              [198.33, "深闺心绪最相知"],
+              [201.93, "流红两不知"],
+              [205.32, "柔波明镜两蛾眉"],
+              [208.92, "修成常展眉"],
+              [212.49, "风因花气入淮南"],
+              [216.06, "余温暂傍一杯甘"],
+              [219.99, "东中院小窗梅香似酒香正华年"],
+              [226.65, "苦芯燃剩一丝甘"],
+              [230.1, "今生聚少趁江南"],
+              [233.7, "狸奴与绮罗一树正滂沱写云烟"],
+            ]
+          }
+        ]
+      };
+
+      // 每组占 2 列 × 4 行（章节牌 1 行 + 卡片 3 行）；组间留 4 行 / 4 列空白
+      const CLUSTER_POSITIONS = [
+        { col: 0, row: 0 },
+        { col: 6, row: 0 },
+        { col: 12, row: 0 },
+        { col: 0, row: 8 },
+        { col: 6, row: 8 },
+        { col: 12, row: 8 }
+      ];
+
+      const PLAY_ICON_PATH = '<path d="M8 5v14l11-7z"/>';
+      const PAUSE_ICON_PATH = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+      const PREV_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.4v14H6zM20 5v14L9.4 12z"/></svg>';
+      const NEXT_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5h-2.4v14H18zM4 5v14l10.6-7z"/></svg>';
+
+      const CREDIT_LINE_RE = /^(作词|作曲|编曲|演唱|出品|监制|制作|题献|谨以|（|\(|白$|20\d{2}[年.\-])/;
+
+      function formatTime(sec) {
+        const s = Math.max(0, Math.floor(sec));
+        const mm = String(Math.floor(s / 60)).padStart(2, '0');
+        const ss = String(s % 60).padStart(2, '0');
+        return `${mm}:${ss}`;
+      }
+
+      function isCreditLine(text) {
+        return CREDIT_LINE_RE.test(text);
+      }
+
+      function formatClock(sec) {
+        const s = Math.max(0, Math.floor(sec));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      }
+      /* =========================================================
+         1b. Offline Energy Envelopes (for file:// playback)
+         ========================================================= */
+      // 8 Hz RMS 包络（每曲按自身响度归一化）。用 file:// 直接打开时浏览器
+      // 不允许 Web Audio 采样本地媒体，这里用离线包络让环境光仍然跟着音乐呼吸。
+      const ENERGY_ENVELOPE_RATE = 8;
+      const ENERGY_ENVELOPES = {
+        dadong: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACsxLRsAHTQjMCQyMDQ4Nj0fLjYqKCkjJxoAESIiPzI4LykwREBFQT5NWEI+My4fHCEUEQAAAAAQABg1KjQzIT8+P1pPU0NAXUQmHyUmNzs6NTEyNT06ODgxODArO0E4QSpEOyovMiw0KSU2UDEyPVNQNz89OjwrKTtCRUpBSkhASkFAKSozKTJARk08JD1EV0U6LyonMjQ8MkU6SUZJRDspMS0qUE8/WklZVz5jVDo0NSc+XU5WTEFDRF1SNB0eKDY3NzpHQVNISFIhIhYAEyw8Ly4AAAAANEJMTDxMPz03HzlCNjQAPyksLBAYFSMmLCAAAAAkPEhGACtTS0AAABVDOQAyAAAAGgAAABQAAAAAABs7RkExMzw9P1JfSzE5ADwjKzYjJxshGBgRAAAAMj5NPT9PMDRTQEM+QgATNikiLh8uHzU6KykAAABlVklAF19gWAA0gJmEflpFQ1VaSjtTSlVSRgAAAElET0dARD45AC9FVjcAO0dES09GQlpKS1NAAAAYQT1MS0xWTEMtOUs8RgA1GyYtKzAvKyojGQAAACxbVzc3NDMxHAA5PTElACMUJT1EQDAmKDAvAAAAMFVPUDRXTkUjECgmLyIVPTUsIxUaKzNBREYuMAA/MCYlADYyMxUASS4tABERAAAAAAAAHSMYAAAAAF5JUEAfTD9DGihMUFIfYHFpaXd5fWlcYWJlYjAfX2FbWVdNOiw9QEU9FwBKVFNGV05VV0xNTDgAAFOWnptSbZalolB+gnRIADcuODMqKTkpLTEoKiwAJzM2LjYzPDI1Gjg9QhIAJhMXIjYsFD9OPSUAAAApRElhYFdfQzcAIzBHREBKSllfWltNWlRkVUcjAEo8Qz9EV0pOExpHUmFSNUNCS0hMTkhSSFFBAAA2goKTnKGpgntaiol7XABaX3F4fnx6e4B7gXp0ZFxZXVxfZFsvSyBSWlw9Ez9BOTAlNDs7Oz01Eh8jXWxmXhVcWFxkVktDQTcoT0NJQ0dLP0s7PkI6QjNbYFpXVlRXUUgzPkxPRjk1JyEmJR4ZIyUuPxgnL2ZVRktXRix4VI6muLchUVVFSU5KV1VTVVFLUzpHfnpzXU03GFgePlZiSzNKVkhDR1VWaWhIRjgYEDRvhoJ3d2pfXTdLUVpFND08MT83LRcrRzc0AAAUMUQ/PAA7UEsAACYhLSIqTD5AU1dKUk9SRDAAERKNo5ysrquFjVdXgo6Xb2OCaW91eoGDg31zdW1XR4N+jZebmpTEvKuprayYgZWGg4iCkYF5jHZcOUlijZKOfnyGjJ9hhJmdiit9eXl8fIV/doJ3hIeNV53QybzSumNrwpKUiJB+O292ZlZdam+Ca01UOEhMjaiim56flI91TZqHhWlRdoB2eXd8fHRtcnJ3cUV6eHRrbWNLXFo6YmFqNUJRSG5WWkldZmdCRyInKoF+d3F6hY19TWZtd2khZXR9gYaFdpSKfnF0eorT//b03dHR37xJj5+cYj6gnp6bl56Zn5WUi2U0P8nq4NbY1ezDx27E9///fr7V7fr9//v////69PPDv8C2y8u5vqOgYailp6SAvsfW09vY0eXdw7ddaWCn2dOif8K9tqiBybqtbIuzx7nHxr+yppiXjIWVep2imZyfoZiXkIuinJV8kpKLoJ6Np5ellJ2Gh3ygp6CldoSjkJWHu+T//4HR8O28rrO0sa2uma6ShZCmpZ6if4loj3N6eIF2WoWMkX+ZiHCPlWKOkWyMpq2Zl4euubu5hqG0i5KxurW4rri5sriZp6Kjt4r////9xryqu6Sbxr3EiLf8///8////////6oJwjubu+vvw9Nr/gvr///+Kzu////////z//////+/Q9Pn09O3fhNXA/////6bt//jr9/76//Ht35tvduv//+y31tfTz2TN4d7QoLCvyc3S1c/Rz8a4tr6bnqieqa6jsaKyjKupoZyKoqCuqa+9t7jEq7eCsHfSvrOopcTEvJ2aqrW5q5+WjaGdkbCfpZ2lk35/g6+gnZqYqJakioyamY56oqilqrOmqam4lKmOnZW2xMfHx9LOk8Krw6O4uKKsrq20pL61sqahn6ylp9////WK2+rt6qe2tLjCotvT////////////opKC/ufo8/Lv5PP//P////+s3N7m6Ory7vTL2NLo2Irl///////+rbujzMS+06jQ+PX//////+zgs3iRqvn65eXh4anq28/y//mvycbP0tDa3NvYwde0wM2+v8rS09bW1tC6wsfEwaHV3Nbn3OLj1enn0amRfMS6ytPBw8y+v7v2///NjK2srLSut7OqpbSmv6yh4///////xpareKepp3uBpKW2vdDW09nXwbuZiarVxsXK0MjAzsm41cLCxcfd5v/8////9v//9P//05avqKexqq6otbOgm5ulsLm1taS0gZyPhJiEmH+VfIKPdYxzbmJjXU9PTkxGPwAAAAAAHRMbLDM8MiQnIygvMjAQISEkKisnISYmKScgKygpIzg0Qjc4QkM7MjVGSTpARkZELgAAAB4fIhwVFgAVEwAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        weijieyichangan: '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',
+        laichun: 'AAAAAAAAAAAAAAAAgKm1iZzNiZeYcHqDiY3CkqmutKjCt7mqloV9g6nEi3NwbK+midLCn3mEgaOH4K/bvdzWrczWm5/DjaqzmIh4lqO7wMvIqZWJlciyu8eX45S9yH/Zkt+bvcN4cQAAHBgWsbF3hl110+u3PgAApsTc46Gwo5SRURcApsXA6eDptToAb2FMe6K6t8zW6LJjAAAAiYpHg4OQcWIAXF0lmKCcq5pndFtYpIEAlpWKhHdubmlwgn+JYWRQR1E6FgAAAAAAuqTVr5hWcYF5Pzk5x8fDv8DG08S6pjgA//fq2Zh0v9S2fVwZb3JvZW1lZUwsAAAAm5dhfWo5dGUzenYVn4pccGNaV1RDR1oAhoBtblJALTc4Uj4sHx4UAAAAAAAAAAAAqJ+H3pV7tc7l06NTqcfObXl4dGNcWxkApc3C4rwm2Pzso8ut1Onr2tjw7di6e0JNmYxRg3pkZXltkKCak52OcGJpbFYAk584ma20s6iwnaChoqSuv6iYp5+GdGg1IwAA0tPI4uZx5NGzuKM/qbGfk4V9eHVYZUsAoaKGiH5Mf4l7enwAND1SUj8/OjI2AAAAjpiWqJFWcWkaj6OjiYqQk3h5nZZWh5MAkYyKra+ciHZgd02YsbCfb4xrhFdJVEg7u9SZoXRFwuLOxYWAr7aZbHuFkaSasoxQvN3O1LsuiI+RjoiD1ee1m7PJtKeEXQAAl5l+qqOHnaBrlG4rjGdARGFtlo50aXcjqp+QhoqVkImKmYFdk5WPnJuLblMAa0Mzzrp7tZBelZJphY52pp6RmsXTz8nCt6cZy9izlIhwsa+yk4qB3uPRqrS1iF07QRsAqJuDqZJnl55BoJ42o4+FenBvZUgiZZpMqaiHkqCNc21mbWNdW1xQKwAAAAAAAAAAm62z0qZGtN+ctJM6mq6thHp2foV7fVVK2NfL89w/prPSzrU3rNqsiZ27r6dzAAAvrIpqm4R6mZJvcW0ktKCQi4F6g2tzfnNA1di9u6y2vcG4rJmOk6CXk4J8czYAFAAltbCD8MWT4eL/llVFwKmQj41kdXRgNQAArLqwoJJEoohzmXkAfZ2QY0hUShgAAAAAo558iIiAnJ9/k0EVzcW9sJygoZdFcGcAhY+KmqOnpaOUoaSRvrWktK+UiEEwVlIvpairio6VeIWYlXZ+k6Cjcn92cXpwkX18oKaxiXiHdXeOaWiVk4ONim2FWJFQg110kop7kqSahG1cYZ2aoaSztqq/lJeBYFNLlJqcno6tlJmasKOfpZifrsCthnhkdkYZpq24n5GdZ4mRh4CZrbOgeomIeoiBcHBzlLCxlpSkkZWUfYumjq2pqZuloJWIg4aRlZOHk56aemJYf4OLl5OSfHhluIm3kKJ/l5SXnp2utaqur5+llKR+qX6jPiEAAAAA2dbL/9Je+v////Zc3r/Nv9jo3OH14Lqd///////U4P////9+4P/////x///PRS6b7cGD9q+1597v/HqU1rW50KfFysTn1c6u5ev72eLNv+TauOTo3M/Zydrkq45ZVz+k8Nmm6cnI/9G6wIR9/uGIwsq+oL6eumBo4erVt8iNnIiJ//9r67Gav7Z5oZB8TjJo0+SEx/HZ4Pfjx8VNz9Hq9dbAwIRa5uRX4NbO5uTWnYiMk5qL07Wnqr3LzI5STVFMu6XTqsOVzb6oq6011NTa3enZ1NTWzZk/+//7xaKJyNHUvL6i6//////////xzZ6S3v//9/LV8dy73a5ZysiwtpVqr8OVl5FO2uTK6PXv9/znvsDB0czFusq9vpJdURYA9Mnx7Pd+9v//snwA0//b8PTy/+rsp3QA////1aFu///94+ewt9zhz9vKtKVOGgAA38Wg09tm3NBhutqu9dHYzty+rpmOr589sqWZvLnL3c3FvKajpINldxwAAAAAAACB7fSHz9WR///////yxb6c1PXm38vu6rfD/////+Jc//////////////////3kvjQX5MiI59eKsaxkk8aWwcCf0LZoxdQbo1mC9fT///+27///3sbV5sflypCLY0wzAAB0xJRt/6WQ/87zx7qX/v7w+NnW7LuuqYsAwPLX6+7DpoWWxdInqtyV4cqvy82rxXAvstie3LmQzZ+buayX9OCduM/D2K/lvOkatcK3r6NzjH6hjoy91rSWYlZXbWISMQA8pKpymMiozIyfzXtzqp9zmKOeh3Z6ubMAlG+ZiYFkgYmKpJKTd2VdgoJ5XC8zSRQASU5HMCUWFgAAAAAAAAA8RDodAAAAAAAAAAAAAAAAGwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+        suliusha: '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',
+        yuhudie: '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',
+        jushaochenjiangnan: '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'
+      };
+
+      const envelopeCache = new Map();
+
+      function getEnergyEnvelope(trackId) {
+        if (!trackId) return null;
+        if (envelopeCache.has(trackId)) return envelopeCache.get(trackId);
+
+        const encoded = ENERGY_ENVELOPES[trackId];
+        let bytes = null;
+        if (encoded) {
+          try {
+            const binary = atob(encoded);
+            bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          } catch (err) {
+            bytes = null;
+          }
+        }
+
+        envelopeCache.set(trackId, bytes);
+        return bytes;
+      }
+
+      /* =========================================================
+         2. Real Album Audio Engine (HTMLAudioElement + Analyser)
+         ========================================================= */
+      class AlbumAudioEngine {
+        constructor() {
+          this.audio = new Audio();
+          this.audio.preload = 'metadata';
+          this.audio.volume = 0.92;
+
+          this.duration = 0;
+          this.isPlaying = false;
+          this.smoothedEnergy = 0;
+          this.lastFrameTs = 0;
+          this.onEnded = null;
+          this.onPlaybackError = null;
+
+          this.ctx = null;
+          this.analyser = null;
+          this.waveData = null;
+          this.analyserReady = false;
+          this.useAnalyser = false;
+          this.envelope = null;
+          this.envRate = ENERGY_ENVELOPE_RATE;
+          this.pendingSeek = null;
+
+          this.audio.addEventListener('play', () => {
+            this.isPlaying = true;
+          });
+
+          this.audio.addEventListener('pause', () => {
+            // 切歌时旧音源的 pause 事件可能晚到，用 paused 兜住避免把新曲标成暂停
+            if (this.audio.paused) this.isPlaying = false;
+          });
+
+          this.audio.addEventListener('ended', () => {
+            this.isPlaying = false;
+            if (typeof this.onEnded === 'function') this.onEnded();
+          });
+
+          this.audio.addEventListener('loadedmetadata', () => {
+            if (Number.isFinite(this.audio.duration) && this.audio.duration > 0) {
+              this.duration = this.audio.duration;
+            }
+            if (this.pendingSeek != null) {
+              try {
+                this.audio.currentTime = this.pendingSeek;
+              } catch (err) {
+                /* ignore */
+              }
+              this.pendingSeek = null;
+            }
+          });
+
+          this.audio.addEventListener('error', () => {
+            console.warn('Audio failed to load:', this.audio.src);
+          });
+        }
+
+        get currentTime() {
+          return Number.isFinite(this.audio.currentTime) ? this.audio.currentTime : 0;
+        }
+
+        set currentTime(value) {
+          try {
+            this.audio.currentTime = value;
+          } catch (err) {
+            /* 元数据还没到时 seek 会抛错，忽略即可 */
+          }
+        }
+
+        load(track) {
+          this.duration = Number.isFinite(track.duration) ? track.duration : 0;
+          this.isPlaying = false;
+          this.smoothedEnergy = 0;
+          this.envelope = getEnergyEnvelope(track.id);
+          this.audio.src = track.src;
+          this.audio.load();
+        }
+
+        /**
+         * 只在 http(s) 下接 AnalyserNode。
+         * 用 file:// 直接双击打开时，本地媒体会被当作跨域资源，
+         * createMediaElementSource 会让声音变哑，所以那种情况让 <audio> 直出，
+         * 视觉能量改用一层随播放推进的包络。
+         */
+        initAnalyser() {
+          if (this.analyserReady) return;
+          if (location.protocol === 'file:') return;
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+
+          try {
+            if (!this.ctx) this.ctx = new AudioCtx();
+            const source = this.ctx.createMediaElementSource(this.audio);
+            this.analyser = this.ctx.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = 0.82;
+            this.waveData = new Uint8Array(this.analyser.fftSize);
+            source.connect(this.analyser);
+            this.analyser.connect(this.ctx.destination);
+            this.analyserReady = true;
+            this.useAnalyser = true;
+          } catch (err) {
+            console.warn('Analyser unavailable, falling back to envelope:', err);
+            this.analyser = null;
+            this.useAnalyser = false;
+          }
+        }
+
+        play() {
+          this.initAnalyser();
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+
+          this.isPlaying = true;
+          this.lastFrameTs = performance.now();
+
+          const promise = this.audio.play();
+          if (promise && typeof promise.catch === 'function') {
+            promise.catch((err) => {
+              if (!this.audio.paused) return;
+              console.warn('Playback blocked:', err);
+              this.isPlaying = false;
+              if (typeof this.onPlaybackError === 'function') this.onPlaybackError(err);
+            });
+          }
+        }
+
+        pause() {
+          this.isPlaying = false;
+          this.audio.pause();
+        }
+
+        toggle() {
+          this.isPlaying ? this.pause() : this.play();
+        }
+
+        seek(seconds, autoPlay = false) {
+          if (!Number.isFinite(seconds)) return;
+          const max = this.duration > 0 ? this.duration - 0.05 : 0;
+          const target = Math.max(0, max > 0 ? Math.min(seconds, max) : seconds);
+          try {
+            this.audio.currentTime = target;
+          } catch (err) {
+            /* ignore */
+          }
+          if (autoPlay && !this.isPlaying) this.play();
+        }
+
+        tick(nowTs) {
+          let rawEnergy = 0;
+
+          if (this.isPlaying) {
+            if (this.useAnalyser && this.analyser && this.waveData) {
+              // 用波形 RMS 而不是频谱均值：真实歌曲的低频能量很容易把频谱打满，
+              // RMS 保留呼吸感，暗段与副歌的亮度差才拉得开
+              this.analyser.getByteTimeDomainData(this.waveData);
+              let sum = 0;
+              for (let i = 0; i < this.waveData.length; i++) {
+                const v = (this.waveData[i] - 128) / 128;
+                sum += v * v;
+              }
+              const rms = Math.sqrt(sum / this.waveData.length);
+              // 这批录音整体偏轻（均值约 -20 dBFS），用 dB 映射而不是线性 RMS，
+              // 轻唱段与副歌的亮度差才看得见
+              const db = 20 * Math.log10(rms + 1e-6);
+              rawEnergy = Math.min(1, Math.max(0, (db + 48) / 32));
+            } else if (this.envelope && this.envelope.length > 1) {
+              const pos = this.currentTime * this.envRate;
+              const i = Math.min(this.envelope.length - 1, Math.max(0, Math.floor(pos)));
+              const j = Math.min(this.envelope.length - 1, i + 1);
+              const frac = pos - Math.floor(pos);
+              const a = this.envelope[i];
+              const b = this.envelope[j];
+              rawEnergy = Math.max(0, (a + (b - a) * frac) / 255);
+            } else {
+              const t = this.currentTime;
+              const breath = 0.5 + 0.5 * Math.sin(t * 1.15) * Math.sin(t * 0.37 + 1.2);
+              rawEnergy = 0.16 + 0.28 * breath;
+            }
+          }
+
+          this.smoothedEnergy += (rawEnergy - this.smoothedEnergy) * 0.12;
+          if (Number.isFinite(nowTs)) this.lastFrameTs = nowTs;
+          return this.smoothedEnergy;
+        }
+      }
+
+      const engine = new AlbumAudioEngine();
+
+      /* =========================================================
+         3. Shell References
+         ========================================================= */
+      const rootEl = document.documentElement;
+
+      const headerPlayBtn = document.getElementById('headerPlayBtn');
+      const headerPlayIcon = document.getElementById('headerPlayIcon');
+      const headerTimecode = document.getElementById('headerTimecode');
+
+      const btnTracks = document.getElementById('btnTracks');
+      const nowPlayingLabel = document.getElementById('nowPlayingLabel');
+      const trackPanel = document.getElementById('trackPanel');
+      const trackPanelList = document.getElementById('trackPanelList');
+
+      const btnReturnCentroid = document.getElementById('btnReturnCentroid');
+
+      const canvasViewport = document.getElementById('canvasViewport');
+      const canvasWorld = document.getElementById('canvasWorld');
+      const spatialGrid = document.getElementById('spatialGrid');
+      const resizePreviewGhost = document.getElementById('resizePreviewGhost');
+
+      /* =========================================================
+         3b. Build Six Song Clusters
+         ========================================================= */
+      const clusters = [];
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (ch) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[ch]));
+      }
+
+      function renderCredits(credits) {
+        return `<div class="c-credits">${credits
+          .map(([key, value]) => `<span class="c-credits__item"><span class="c-credits__key">${escapeHtml(key)}</span><span class="c-credits__value">${escapeHtml(value)}</span></span>`)
+          .join('')}</div>`;
+      }
+
+      const RESIZE_HANDLE = `
+        <div class="resize-handle" aria-label="拖动缩放">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M13 7L7 13M13 11L11 13" />
+          </svg>
+        </div>`;
+
+      function createCardShell(className, size, col, row, allowedSizes, track, name, index) {
+        const card = document.createElement('article');
+        card.className = 'widget-card c-card ' + className;
+        card.dataset.size = size;
+        card.dataset.col = String(col);
+        card.dataset.row = String(row);
+        card.dataset.allowedSizes = allowedSizes;
+        card.dataset.cluster = String(index);
+        card.dataset.card = name;
+        card.style.setProperty('--cluster-accent', track.accent);
+        card.style.setProperty('--cluster-soft', track.accentSoft);
+        return card;
+      }
+
+      function buildClusters() {
+        const ALL_SIZES = '1x1,1x2,2x1,2x2';
+        const DRAG_ZONE = `
+          <div class="drag-handle-zone" aria-label="长按拖动重排"><span class="drag-pill"></span></div>`;
+
+        ALBUM.tracks.forEach((track, index) => {
+          const pos = CLUSTER_POSITIONS[index] || { col: (index % 3) * 5, row: Math.floor(index / 3) * 4 };
+          const num = String(index + 1).padStart(2, '0');
+          const title = escapeHtml(track.title);
+          const cards = [];
+
+          /* ---------- 01 c-record · 卡槽 CD ---------- */
+          const record = createCardShell('c-record', '1x2', pos.col, pos.row + 1, ALL_SIZES, track, 'record', index);
+          record.innerHTML = `
+            ${DRAG_ZONE}
+            <div class="c-record__deck">
+              <div class="c-record__body">
+                <div class="c-record__eyebrow">
+                  <span class="c-record__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                  <span>NOW SPINNING</span>
+                </div>
+                <h3 class="c-record__title">${title}</h3>
+                <div class="c-record__artist">${escapeHtml(track.artist)}</div>
+                <div class="c-record__credits">${renderCredits(track.credits)}</div>
+                <div class="c-progress">
+                  <input
+                    type="range"
+                    class="c-progress__range"
+                    data-role="seek"
+                    min="0"
+                    max="${track.duration.toFixed(1)}"
+                    step="0.1"
+                    value="0"
+                    aria-label="${title} 播放进度"
+                  />
+                  <div class="c-progress__times">
+                    <span data-role="time">0:00</span>
+                    <span data-role="remaining">${formatClock(track.duration)}</span>
+                  </div>
+                </div>
+                <div class="c-record__controls">
+                  <button class="c-record__nav" type="button" data-role="prev" aria-label="上一首">${PREV_ICON}</button>
+                  <button class="c-play" type="button" data-role="play" aria-label="播放或暂停 ${title}">
+                    <svg viewBox="0 0 24 24" fill="currentColor" data-role="play-icon">${PLAY_ICON_PATH}</svg>
+                  </button>
+                  <button class="c-record__nav" type="button" data-role="next" aria-label="下一首">${NEXT_ICON}</button>
+                </div>
+              </div>
+            </div>
+            <div class="c-record__slot" aria-hidden="true"></div>
+            <div class="c-record__disc">
+              <div class="c-record__disc-spin" data-role="disc">
+                <div class="c-record__disc-art" style="background-image:url('${track.image}')"></div>
+                <div class="c-record__disc-grooves" aria-hidden="true"></div>
+                <div class="c-record__disc-irid" aria-hidden="true"></div>
+              </div>
+              <div class="c-record__disc-label" aria-hidden="true">
+                <div class="c-record__disc-ring"><div class="c-record__disc-hole"></div></div>
+              </div>
+              <div class="c-record__disc-sheen" aria-hidden="true"></div>
+              <div class="c-record__disc-rim" aria-hidden="true"></div>
+            </div>
+            ${RESIZE_HANDLE}`;
+
+          const disc = record.querySelector('[data-role="disc"]');
+          const playBtn = record.querySelector('[data-role="play"]');
+          const playIcon = record.querySelector('[data-role="play-icon"]');
+          const seek = record.querySelector('[data-role="seek"]');
+          const time = record.querySelector('[data-role="time"]');
+          const remaining = record.querySelector('[data-role="remaining"]');
+          const prevBtn = record.querySelector('[data-role="prev"]');
+          const nextBtn = record.querySelector('[data-role="next"]');
+
+          playBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleRecordPlay(index);
+          });
+          prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleRecordStep(index, -1);
+          });
+          nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleRecordStep(index, 1);
+          });
+          seek.addEventListener('input', () => handleSeekInput(index, parseFloat(seek.value)));
+
+          /* ---------- 02 c-story ---------- */
+          const lead = track.story
+            .filter((block) => !block.h)
+            .slice(0, 2)
+            .map((block) => block.t)
+            .join(' ');
+          const fullStory = track.story
+            .map((block) => block.h
+              ? `<h4>${escapeHtml(block.t)}</h4>`
+              : `<p>${escapeHtml(block.t)}</p>`)
+            .join('');
+          const story = createCardShell('c-story paper-grain', '2x1', pos.col, pos.row + 3, ALL_SIZES, track, 'story', index);
+          story.innerHTML = `
+            ${DRAG_ZONE}
+            <div class="c-tape" aria-hidden="true"></div>
+            <button class="c-story__expand" type="button" aria-label="展开 ${title} 的创作手记">…</button>
+            <div class="c-story__inner">
+              <div class="c-story__kicker">${escapeHtml(track.chapter)}</div>
+              <h3 class="c-story__title">${title}</h3>
+              <blockquote class="c-story__quote">${escapeHtml(track.quote)}</blockquote>
+              <p class="c-story__lead">${escapeHtml(lead)}</p>
+              <div class="c-story__full">
+                ${fullStory}
+                ${renderCredits(track.credits)}
+              </div>
+            </div>
+            ${RESIZE_HANDLE}`;
+
+          const expandBtn = story.querySelector('.c-story__expand');
+          expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStoryCard(index);
+          });
+
+          /* ---------- 03 c-visual ---------- */
+          const visual = createCardShell('c-visual c-card--dark', '1x1', pos.col + 1, pos.row + 1, ALL_SIZES, track, 'visual', index);
+          visual.innerHTML = `
+            ${DRAG_ZONE}
+            <img class="c-visual__art" src="${track.image}" alt="${title} 四周年插画" draggable="false" />
+            <div class="c-visual__glow" aria-hidden="true"></div>
+            <div class="c-visual__badge">正在播放</div>
+            <div class="c-caption">
+              <span class="c-caption__title">${title}</span>
+            </div>
+            ${RESIZE_HANDLE}`;
+
+
+          /* ---------- 04 c-lyrics ---------- */
+          const lyrics = createCardShell('c-lyrics paper-grain', '1x1', pos.col + 1, pos.row + 2, ALL_SIZES, track, 'lyrics', index);
+          lyrics.innerHTML = `
+            ${DRAG_ZONE}
+            <div class="c-lyrics__scroll" data-role="lyrics"></div>
+            ${RESIZE_HANDLE}`;
+
+          const lyricScroll = lyrics.querySelector('[data-role="lyrics"]');
+          const lyricNodes = [];
+          // 只留真正在唱的词：作词/作曲/日期这些行不进歌词卡
+          const lyricLines = track.lines.filter((line) => !isCreditLine(line[1]));
+          lyricLines.forEach((line) => {
+            const div = document.createElement('div');
+            div.className = 'c-lyrics__line';
+            const text = document.createElement('span');
+            text.className = 'c-lyrics__text';
+            text.textContent = line[1];
+            div.appendChild(text);
+            div.addEventListener('click', () => handleLyricSeek(index, line[0]));
+            lyricScroll.appendChild(div);
+            lyricNodes.push(div);
+          });
+
+
+          /* ---------- 05 c-marker（固定 1×2） ---------- */
+          const marker = createCardShell('c-marker', '2x1', pos.col, pos.row, '2x1', track, 'marker', index);
+          marker.innerHTML = `
+            <div class="drag-handle-zone" aria-label="长按拖动章节牌"><span class="drag-pill"></span></div>
+            <div class="c-marker__inner" role="button" tabindex="0" aria-label="飞往 ${title}">
+              <div class="c-marker__line">
+                <span class="c-marker__no">${num}</span>
+                <span class="c-marker__title${track.title.length > 6 ? ' is-long' : ''}">${title}</span>
+              </div>
+            </div>`;
+
+          const markerInner = marker.querySelector('.c-marker__inner');
+          const markerZone = marker.querySelector('.drag-handle-zone');
+          const flyHere = () => flyToCluster(index, 640);
+
+          markerInner.addEventListener('click', flyHere);
+          markerInner.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              flyHere();
+            }
+          });
+          // 拖拽区盖在内容上：轻点飞过去，长按则拖动章节牌
+          markerZone.addEventListener('click', flyHere);
+
+          cards.push(marker, record, visual, lyrics, story);
+          clusters.push({
+            track,
+            pos,
+            marker,
+            cards,
+            story,
+            disc,
+            playBtn,
+            playIcon,
+            seek,
+            time,
+            remaining,
+            lyricScroll,
+            lyricNodes,
+            lyricLines,
+            lyrics
+          });
+
+          cards.forEach((card) => spatialGrid.appendChild(card));
+        });
+      }
+
+      buildClusters();
+
+      function openStoryCard(index) {
+        const cluster = clusters[index];
+        if (!cluster || !cluster.story) return;
+        const card = cluster.story;
+        if (card.dataset.size === '2x2') return;
+
+        const storyCol = Number(card.dataset.col);
+        const storyRow = Number(card.dataset.row);
+        const storyBottom = storyRow + 2;
+        const pushed = [];
+
+        // 打开 = 把卡片变成 2×2：与它相交的卡片让出空间，镜头不动
+        cluster.cards.forEach((other) => {
+          if (other === card || other === cluster.marker) return;
+          const col = Number(other.dataset.col);
+          const row = Number(other.dataset.row);
+          const span = getCardSpan(other);
+          const overlapsX = col < storyCol + 2 && col + span.w > storyCol;
+          const overlapsY = row < storyBottom && row + span.h > storyRow;
+          if (overlapsX && overlapsY) {
+            pushed.push({ card: other, pushedRow: storyBottom });
+          }
+        });
+
+        flipGridMutation(() => {
+          card.dataset.size = '2x2';
+          pushed.forEach(({ card: other, pushedRow }) => {
+            other.dataset.row = String(pushedRow);
+          });
+          applyCardPositions();
+        }, card);
+
+        const inner = card.querySelector('.c-story__inner');
+        if (inner) inner.scrollTop = 0;
+      }
+
+
+      /* =========================================================
+         4. Infinite Canvas Camera & Centroid Engine
+         ========================================================= */
+      let camX = 0;
+      let camY = 0;
+      let camScale = 1;
+      const MIN_SCALE = 0.15;
+      const MAX_SCALE = 1.8;
+      const DOT_GRID_STEP = 28;
+      const FIT_PADDING = 32;
+
+      let cameraAnimRaf = null;
+      let isSpacePressed = false;
+      let panState = null;
+
+      function clampScale(value) {
+        return Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+      }
+
+      function getViewportRect() {
+        return canvasViewport.getBoundingClientRect();
+      }
+
+      // 缩放 / 平移与「缩放手柄拖动」「卡片重排拖动」互斥，避免同一指针下两套状态机打架
+      function isCameraBusy() {
+        return Boolean(activeResize) || Boolean(dragState);
+      }
+
+      function applyCameraTransform() {
+        canvasWorld.style.transform = `translate3d(${camX.toFixed(2)}px, ${camY.toFixed(2)}px, 0) scale(${camScale.toFixed(4)})`;
+        canvasViewport.style.setProperty('--cam-scale', camScale.toFixed(4));
+        const scaledStep = DOT_GRID_STEP * camScale;
+        canvasViewport.style.backgroundSize = `${scaledStep.toFixed(2)}px ${scaledStep.toFixed(2)}px`;
+        canvasViewport.style.backgroundPosition = `${camX.toFixed(2)}px ${camY.toFixed(2)}px`;
+      }
+
+      function cancelCameraAnimation() {
+        if (cameraAnimRaf) {
+          cancelAnimationFrame(cameraAnimRaf);
+          cameraAnimRaf = null;
+        }
+      }
+
+      function animateCameraTo(targetX, targetY, targetScale, duration) {
+        cancelCameraAnimation();
+
+        const tx = Number.isFinite(targetX) ? targetX : camX;
+        const ty = Number.isFinite(targetY) ? targetY : camY;
+        const ts = Number.isFinite(targetScale) ? targetScale : camScale;
+
+        if (!(duration > 0)) {
+          camX = tx;
+          camY = ty;
+          camScale = ts;
+          applyCameraTransform();
+          return;
+        }
+
+        const startX = camX;
+        const startY = camY;
+        const startScale = camScale;
+        const startTime = performance.now();
+
+        function easeOutCubic(t) {
+          return 1 - Math.pow(1 - t, 3);
+        }
+
+        function step(now) {
+          const t = Math.min(1, (now - startTime) / duration);
+          const e = easeOutCubic(t);
+          camX = startX + (tx - startX) * e;
+          camY = startY + (ty - startY) * e;
+          camScale = startScale + (ts - startScale) * e;
+          applyCameraTransform();
+
+          cameraAnimRaf = t < 1 ? requestAnimationFrame(step) : null;
+        }
+
+        cameraAnimRaf = requestAnimationFrame(step);
+      }
+
+      /**
+       * 以「世界坐标」测量所有卡片的外接矩形。
+       * 用 offsetLeft/offsetTop（布局位置）而不是 getBoundingClientRect():
+       * 后者会被相机缩放、FLIP 补间、拖拽中的 fixed 卡片污染，导致「回到质心」算偏。
+       */
+      function getWorldBounds(cards) {
+        const list = Array.isArray(cards) && cards.length
+          ? cards
+          : Array.from(spatialGrid.querySelectorAll('.widget-card')).filter(
+              (card) => !card.classList.contains('is-lifted')
+            );
+        if (list.length === 0) return null;
+
+        const gridX = spatialGrid.offsetLeft;
+        const gridY = spatialGrid.offsetTop;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        list.forEach((card) => {
+          const x = gridX + card.offsetLeft;
+          const y = gridY + card.offsetTop;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x + card.offsetWidth > maxX) maxX = x + card.offsetWidth;
+          if (y + card.offsetHeight > maxY) maxY = y + card.offsetHeight;
+        });
+
+        if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+
+        return {
+          minX,
+          minY,
+          maxX,
+          maxY,
+          width: Math.max(1, maxX - minX),
+          height: Math.max(1, maxY - minY)
+        };
+      }
+
+      /**
+       * 把全部卡片框进视口：以内容外接矩形居中，并按可用空间自适应缩放（最大 1）。
+       * 之前的实现固定 scale = 1，小窗口下会把卡片顶出屏幕。
+       */
+      function returnToCentroid(animateDuration = 500) {
+        if (isCameraBusy()) return;
+
+        const bounds = getWorldBounds();
+        if (!bounds) return;
+
+        const vp = getViewportRect();
+        const headerRect = document.querySelector('.floating-header').getBoundingClientRect();
+        // 顶部为悬浮 header 让位；header 换行时高度变化会自然生效
+        const topInset = Math.max(0, headerRect.bottom - vp.top) + FIT_PADDING;
+        const availW = Math.max(160, vp.width - FIT_PADDING * 2);
+        const availH = Math.max(160, vp.height - topInset - FIT_PADDING);
+
+        const targetScale = clampScale(
+          Math.min(1, availW / bounds.width, availH / bounds.height)
+        );
+        const cx = (bounds.minX + bounds.maxX) / 2;
+        const cy = (bounds.minY + bounds.maxY) / 2;
+        // 相机 translate 是相对画布视口原点的，所以这里也用视口内坐标（vp.left/top 作为基准）
+        const targetX = vp.width / 2 - cx * targetScale;
+        const targetY = topInset + availH / 2 - cy * targetScale;
+
+        animateCameraTo(targetX, targetY, targetScale, animateDuration);
+      }
+
+      /**
+       * 首屏镜头：桌面看全景；窄屏/触摸设备把第一张卡（唱片）放到可读尺寸，
+       * 用户再单指平移、双指缩放探索整张画布。“回到质心”始终是看全景。
+       */
+      function focusInitialView() {
+        const vp = getViewportRect();
+        const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+        if (vp.width > 768 && !coarse) {
+          // 桌面先看整张地图：六组 cluster 的分布本身就是内容
+          returnToCentroid(0);
+          return;
+        }
+
+        // 窄屏先把第一首歌的唱片放到可读尺寸（贴住 header，不垂直居中留白），
+        // 再单指平移探索这个 cluster 的其余卡片
+        const firstChapter = clusters[0];
+        if (!firstChapter || !firstChapter.cards.length) return;
+
+        const targets = firstChapter.cards.slice(0, 2);
+        const bounds = getWorldBounds(targets);
+        if (!bounds) return;
+
+        const headerRect = document.querySelector('.floating-header').getBoundingClientRect();
+        const topInset = Math.max(0, headerRect.bottom - vp.top) + FIT_PADDING;
+        const availW = Math.max(160, vp.width - FIT_PADDING * 2);
+        const availH = Math.max(160, vp.height - topInset - FIT_PADDING);
+        const scale = clampScale(Math.min(0.9, availW / bounds.width, availH / bounds.height));
+        const cx = (bounds.minX + bounds.maxX) / 2;
+
+        animateCameraTo(vp.width / 2 - cx * scale, topInset + 10 - bounds.minY * scale, scale, 0);
+      }
+
+      /**
+       * 把指定的一组卡片框进视口（飞往某一首歌的 cluster 时用）。
+       */
+      function focusCards(cards, animateDuration = 600, maxScale = 1) {
+        if (!cards || !cards.length) return;
+        const bounds = getWorldBounds(cards);
+        if (!bounds) return;
+
+        const vp = getViewportRect();
+        const headerRect = document.querySelector('.floating-header').getBoundingClientRect();
+        const topInset = Math.max(0, headerRect.bottom - vp.top) + FIT_PADDING;
+        const availW = Math.max(160, vp.width - FIT_PADDING * 2);
+        const availH = Math.max(160, vp.height - topInset - FIT_PADDING);
+
+        const targetScale = clampScale(
+          Math.min(maxScale, availW / bounds.width, availH / bounds.height)
+        );
+        const cx = (bounds.minX + bounds.maxX) / 2;
+        const cy = (bounds.minY + bounds.maxY) / 2;
+
+        animateCameraTo(
+          vp.width / 2 - cx * targetScale,
+          topInset + availH / 2 - cy * targetScale,
+          targetScale,
+          animateDuration
+        );
+      }
+
+      btnReturnCentroid.addEventListener('click', () => returnToCentroid(500));
+
+      /* ---------- Space 键：平移修饰符 ---------- */
+      function isTypingTarget(el) {
+        if (!el) return false;
+        if (el.isContentEditable === true) return true;
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+        if (el.tagName !== 'INPUT') return false;
+        // 只有「文本类」输入才需要保留 Space；range/checkbox 等聚焦时仍允许 Space 平移
+        const type = (el.type || 'text').toLowerCase();
+        return !['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file'].includes(type);
+      }
+
+      function isButtonLike(el) {
+        return Boolean(el && (el.tagName === 'BUTTON' || el.tagName === 'A'));
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code !== 'Space' || e.repeat) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        // 输入框 / 获得焦点的按钮保留 Space 的默认语义，不要抢成平移
+        if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+        if (isButtonLike(document.activeElement)) return;
+        // 阻止 Space 的默认滚动，否则拖到一半页面会跟着滚
+        e.preventDefault();
+        isSpacePressed = true;
+        canvasViewport.classList.add('space-ready');
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code !== 'Space') return;
+        isSpacePressed = false;
+        canvasViewport.classList.remove('space-ready');
+      });
+
+      // 平移：空白处左键拖拽 / Space + 左键 / 中键拖拽
+      canvasViewport.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return; // 触摸手势走 window 层的 touch 状态机
+        if (isCameraBusy()) return;
+        if (panState) return; // 已有指针在平移，忽略第二个指针，避免抢状态
+
+        const isMiddleBtn = e.button === 1;
+        const isLeftBtn = e.button === 0;
+        const onCard = Boolean(e.target.closest && e.target.closest('.widget-card'));
+
+        // 歌词卡里只有“行”是歌词相关的点击区；卡边距、scroll 的留白边缘
+        // 不参与歌词滚动，应该能作为画布平移的起点。
+        const onLyrics = Boolean(e.target.closest && e.target.closest('.c-lyrics'));
+        const onLyricLine = Boolean(e.target.closest && e.target.closest('.c-lyrics__line'));
+        const onControl = Boolean(
+          e.target.closest && e.target.closest('button, input, a, select, textarea, .resize-handle, .drag-handle-zone')
+        );
+        const panFromLyricsEdge = onLyrics && !onLyricLine && !onControl;
+
+        // 右键、普通左键点卡片等都不应触发平移（原实现里右键也会开始平移并吞掉菜单）
+        if (!isMiddleBtn && !(isLeftBtn && (isSpacePressed || !onCard || panFromLyricsEdge))) return;
+
+        e.preventDefault();
+        cancelCameraAnimation();
+        panState = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          originCamX: camX,
+          originCamY: camY,
+          moved: false
+        };
+        canvasViewport.classList.add('is-panning');
+        try { canvasViewport.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      canvasViewport.addEventListener('pointermove', (e) => {
+        if (!panState || e.pointerId !== panState.pointerId) return;
+        // 鼠标键已经松开（pointerup 丢在窗口外时）主动收尾，避免“悬停也在平移”
+        if (e.pointerType === 'mouse' && e.buttons === 0) {
+          endPan(e);
+          return;
+        }
+        camX = panState.originCamX + (e.clientX - panState.startX);
+        camY = panState.originCamY + (e.clientY - panState.startY);
+        if (
+          !panState.moved &&
+          (Math.abs(e.clientX - panState.startX) > 3 || Math.abs(e.clientY - panState.startY) > 3)
+        ) {
+          panState.moved = true;
+        }
+        applyCameraTransform();
+      });
+
+      // 平移结束后浏览器仍会补发一次 click；若不吞掉，Space+拖拽会让被拖过的卡片误触点击
+      let suppressClickUntil = 0;
+
+      function endPan(e) {
+        if (!panState) return;
+        if (e && e.pointerId != null && e.pointerId !== panState.pointerId) return;
+
+        const { pointerId, moved } = panState;
+        panState = null;
+        canvasViewport.classList.remove('is-panning');
+        if (moved) suppressClickUntil = performance.now() + 120;
+        try {
+          if (canvasViewport.hasPointerCapture(pointerId)) {
+            canvasViewport.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+      }
+
+      window.addEventListener('click', (e) => {
+        if (performance.now() > suppressClickUntil) return;
+        // 只吞画布区域内补发的 click；header / 弹层上的真实点击不受影响
+        const el = e.target;
+        if (!el || !el.closest || !el.closest('.canvas-viewport')) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      canvasViewport.addEventListener('pointerup', endPan);
+      canvasViewport.addEventListener('pointercancel', endPan);
+      canvasViewport.addEventListener('lostpointercapture', endPan);
+      // 兜底：指针在画布外释放 / 窗口失焦 / 指针被系统取消时，状态也必须出去
+      window.addEventListener('pointerup', endPan);
+      window.addEventListener('pointercancel', endPan);
+      window.addEventListener('blur', () => {
+        isSpacePressed = false;
+        canvasViewport.classList.remove('space-ready');
+        endPan(null);
+      });
+      canvasViewport.addEventListener('auxclick', (e) => {
+        if (e.button === 1) e.preventDefault(); // 阻止中键自动滚动
+      });
+
+      // Wheel: Ctrl/Cmd + wheel zooms anchored to cursor; regular wheel/trackpad pans
+      let wheelGesture = null;
+      const WHEEL_GESTURE_GAP = 180;
+
+      canvasViewport.addEventListener('wheel', (e) => {
+        const isZoomGesture = e.ctrlKey || e.metaKey;
+        const now = performance.now();
+
+        // 一次滚动/缩放手势的归属由起点决定：起点在歌词或手记内部就滚它，
+        // 起点在画布/卡片边缘就移动画布；光标中途移出也不改判。
+        if (!wheelGesture || now - wheelGesture.lastTs > WHEEL_GESTURE_GAP) {
+          if (wheelGesture && wheelGesture.el) {
+            wheelGesture.el.style.scrollBehavior = wheelGesture.prevBehavior;
+          }
+          const scrollable = e.target.closest('.c-lyrics__scroll, .c-story.sz-2x2 .c-story__inner');
+          const canScrollY = Boolean(scrollable && scrollable.scrollHeight > scrollable.clientHeight + 2);
+          wheelGesture = {
+            mode: canScrollY && !isZoomGesture ? 'inner' : 'canvas',
+            el: canScrollY && !isZoomGesture ? scrollable : null,
+            lastTs: now,
+            timer: null,
+            prevBehavior: ''
+          };
+          if (wheelGesture.el) {
+            wheelGesture.prevBehavior = wheelGesture.el.style.scrollBehavior || '';
+            wheelGesture.el.style.scrollBehavior = 'auto';
+          }
+        } else {
+          wheelGesture.lastTs = now;
+        }
+
+        const gesture = wheelGesture;
+        clearTimeout(gesture.timer);
+        gesture.timer = setTimeout(() => {
+          if (gesture.el) gesture.el.style.scrollBehavior = gesture.prevBehavior;
+          if (wheelGesture === gesture) wheelGesture = null;
+        }, WHEEL_GESTURE_GAP);
+
+        if (gesture.mode === 'inner') {
+          e.preventDefault();
+          const el = gesture.el;
+          const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
+          const next = el.scrollTop + e.deltaY * unit;
+          el.scrollTop = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, next));
+          return;
+        }
+
+        // 缩放 / 重排拖动期间冻结相机，避免预览框与手势参考系错位
+        if (isCameraBusy()) {
+          e.preventDefault();
+          return;
+        }
+
+        // 归一化 deltaMode：Firefox 鼠标滚轮是「行」单位，不换算会几乎滚不动
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? getViewportRect().height : 1;
+        const dx = e.deltaX * unit;
+        const dy = e.deltaY * unit;
+        if (!dx && !dy) return;
+
+        e.preventDefault();
+        cancelCameraAnimation();
+        if (panState) endPan(null); // 滚轮与指针平移不叠加
+
+        if (isZoomGesture) {
+          const nextScale = clampScale(camScale * Math.exp(-dy * 0.0045));
+          if (nextScale !== camScale) {
+            const vp = getViewportRect();
+            const px = e.clientX - vp.left;
+            const py = e.clientY - vp.top;
+            const ratio = nextScale / camScale;
+
+            // 保持光标下的世界坐标点不动
+            camX = px - (px - camX) * ratio;
+            camY = py - (py - camY) * ratio;
+            camScale = nextScale;
+          }
+        } else {
+          camX -= dx;
+          camY -= dy;
+        }
+
+        applyCameraTransform();
+      }, { passive: false });
+
+      /* ---------- Touch Gestures: 单指平移 / 双指缩放 / 内部滚动 ---------- */
+      const touchPointers = new Map();
+      let touchGesture = null;
+      const TOUCH_TAP_SLOP = 6;
+      const TOUCH_SCROLL_SLOP = 6;
+
+      function isTouchControlTarget(el) {
+        if (!el || !el.closest) return false;
+        return Boolean(
+          el.closest(
+            'input, button, a, select, textarea, [contenteditable="true"], .resize-handle, .tonearm-pivot'
+          )
+        );
+      }
+
+      function getTouchScrollable(el) {
+        if (!el || !el.closest) return null;
+        const node = el.closest('.c-lyrics__scroll, .c-story.sz-2x2 .c-story__inner');
+        if (!node) return null;
+        return node.scrollHeight > node.clientHeight + 2 ? node : null;
+      }
+
+      function stopTouchGesture() {
+        if (!touchGesture) return;
+        if (touchGesture.mode === 'scroll' && touchGesture.el) {
+          touchGesture.el.style.scrollBehavior = touchGesture.prevScrollBehavior || '';
+        }
+        touchGesture = null;
+        canvasViewport.classList.remove('is-panning');
+      }
+
+      function startTouchPan(pointerId, clientX, clientY) {
+        touchGesture = {
+          mode: 'pan',
+          pointerId,
+          startX: clientX,
+          startY: clientY,
+          originCamX: camX,
+          originCamY: camY,
+          moved: false
+        };
+      }
+
+      function startTouchPinch() {
+        const ids = Array.from(touchPointers.keys()).slice(0, 2);
+        if (ids.length < 2) return;
+        const a = touchPointers.get(ids[0]);
+        const b = touchPointers.get(ids[1]);
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+        const vp = getViewportRect();
+        cancelCameraAnimation();
+        stopTouchGesture();
+        touchGesture = {
+          mode: 'pinch',
+          ids,
+          startDist: dist,
+          startScale: camScale,
+          anchorX: (midX - vp.left - camX) / camScale,
+          anchorY: (midY - vp.top - camY) / camScale,
+          moved: false
+        };
+      }
+
+      function updateTouchPinch() {
+        const g = touchGesture;
+        const a = touchPointers.get(g.ids[0]);
+        const b = touchPointers.get(g.ids[1]);
+        if (!a || !b) return;
+        const vp = getViewportRect();
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+        const nextScale = clampScale(g.startScale * (dist / g.startDist));
+        camScale = nextScale;
+        camX = midX - vp.left - g.anchorX * nextScale;
+        camY = midY - vp.top - g.anchorY * nextScale;
+        g.moved = true;
+        applyCameraTransform();
+      }
+
+      function onTouchPointerDown(e) {
+        if (e.pointerType !== 'touch') return;
+        if (!canvasViewport.contains(e.target)) return; // header / panel
+        if (activeResize || isDraggingTonearm) return;
+        if (dragState && dragState.phase !== 'pending') return;
+
+        touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        // 第二根手指 → 双指缩放，接管已经开始的单指平移/滚动
+        if (touchPointers.size >= 2) {
+          if (touchGesture && touchGesture.mode !== 'pinch') {
+            if (dragState && dragState.phase === 'pending') cancelPendingDrag();
+            startTouchPinch();
+          }
+          return;
+        }
+
+        // 任何触摸手势都先停掉相机补间，避免镜头一边飞一边被拖
+        cancelCameraAnimation();
+
+        // 按钮、slider 等控件把触摸留给它们自己
+        if (isTouchControlTarget(e.target)) return;
+
+        const scrollable = getTouchScrollable(e.target);
+        if (scrollable) {
+          touchGesture = {
+            mode: 'scroll',
+            pointerId: e.pointerId,
+            el: scrollable,
+            startX: e.clientX,
+            startY: e.clientY,
+            startScrollTop: scrollable.scrollTop,
+            prevScrollBehavior: scrollable.style.scrollBehavior || '',
+            moved: false
+          };
+          scrollable.style.scrollBehavior = 'auto';
+          return;
+        }
+
+        cancelCameraAnimation();
+        startTouchPan(e.pointerId, e.clientX, e.clientY);
+      }
+
+      function onTouchPointerMove(e) {
+        if (e.pointerType !== 'touch') return;
+        const tracked = touchPointers.get(e.pointerId);
+        if (tracked) {
+          tracked.x = e.clientX;
+          tracked.y = e.clientY;
+        }
+        if (!tracked || !touchGesture) return;
+        if (activeResize || isDraggingTonearm) return;
+        if (dragState && dragState.phase !== 'pending') return;
+
+        const g = touchGesture;
+
+        if (g.mode === 'pinch') {
+          updateTouchPinch();
+          return;
+        }
+
+        if (g.mode === 'scroll') {
+          if (e.pointerId !== g.pointerId) return;
+          const dyScreen = e.clientY - g.startY;
+          if (!g.moved && Math.abs(dyScreen) > TOUCH_SCROLL_SLOP) g.moved = true;
+
+          // 手势在内部开始，就只滚这一块；滑到头也不改判成画布平移
+          const dy = dyScreen / camScale;
+          const maxScroll = Math.max(0, g.el.scrollHeight - g.el.clientHeight);
+          g.el.scrollTop = Math.max(0, Math.min(maxScroll, g.startScrollTop - dy));
+          return;
+        }
+
+        if (g.mode === 'pan') {
+          if (e.pointerId !== g.pointerId) return;
+          const dx = e.clientX - g.startX;
+          const dy = e.clientY - g.startY;
+          if (!g.moved) {
+            if (Math.hypot(dx, dy) <= TOUCH_TAP_SLOP) return;
+            // 越过阈值后从当前位置重锚，避免第一下跳一下
+            g.moved = true;
+            g.startX = e.clientX;
+            g.startY = e.clientY;
+            g.originCamX = camX;
+            g.originCamY = camY;
+            canvasViewport.classList.add('is-panning');
+          }
+          camX = g.originCamX + (e.clientX - g.startX);
+          camY = g.originCamY + (e.clientY - g.startY);
+          applyCameraTransform();
+        }
+      }
+
+      function onTouchPointerEnd(e, cancelled) {
+        if (e && e.pointerType !== 'touch') return;
+        if (e) touchPointers.delete(e.pointerId);
+        if (!touchGesture) return;
+
+        const g = touchGesture;
+
+        if (g.mode === 'pinch') {
+          // 第三根手指抬起不应打断双指手势
+          if (e && g.ids.indexOf(e.pointerId) === -1) return;
+          if (touchPointers.size === 1) {
+            // 双指变单指：从剩下那根手指继续平移，避免跳变
+            const entry = touchPointers.entries().next().value;
+            touchGesture = null;
+            startTouchPan(entry[0], entry[1].x, entry[1].y);
+            touchGesture.moved = true;
+          } else {
+            touchGesture = null;
+          }
+          canvasViewport.classList.remove('is-panning');
+          if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
+          return;
+        }
+
+        if (e && g.pointerId !== e.pointerId) return;
+
+        if (g.mode === 'scroll') {
+          g.el.style.scrollBehavior = g.prevScrollBehavior || '';
+        }
+        touchGesture = null;
+        canvasViewport.classList.remove('is-panning');
+        if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
+      }
+
+      window.addEventListener('pointerdown', onTouchPointerDown, { passive: true });
+      window.addEventListener('pointermove', onTouchPointerMove, { passive: true });
+      window.addEventListener('pointerup', (e) => onTouchPointerEnd(e, false), { passive: true });
+      window.addEventListener('pointercancel', (e) => onTouchPointerEnd(e, true), { passive: true });
+      window.addEventListener('blur', () => {
+        touchPointers.clear();
+        stopTouchGesture();
+      });
+
+      /* =========================================================
+         5. Edge Auto-Scrolling Engine (Resize & Reorder)
+         ========================================================= */
+      const EDGE_ZONE = 64;
+      const MAX_EDGE_SPEED = 14;
+      let edgeScrollRaf = null;
+      let lastPointerX = 0;
+      let lastPointerY = 0;
+
+      function startEdgeScrollLoop() {
+        if (edgeScrollRaf) return;
+        edgeScrollRaf = requestAnimationFrame(edgeScrollTick);
+      }
+
+      function stopEdgeScrollLoop() {
+        if (edgeScrollRaf) {
+          cancelAnimationFrame(edgeScrollRaf);
+          edgeScrollRaf = null;
+        }
+      }
+
+      function edgeScrollTick() {
+        const resizing = Boolean(activeResize);
+        const dragging = Boolean(dragState && dragState.phase === 'dragging');
+
+        if (!resizing && !dragging) {
+          edgeScrollRaf = null;
+          return;
+        }
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let vx = 0;
+        let vy = 0;
+
+        if (lastPointerX < EDGE_ZONE) {
+          vx = ((EDGE_ZONE - lastPointerX) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        } else if (lastPointerX > vw - EDGE_ZONE) {
+          vx = -((lastPointerX - (vw - EDGE_ZONE)) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        }
+
+        if (lastPointerY < EDGE_ZONE) {
+          vy = ((EDGE_ZONE - lastPointerY) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        } else if (lastPointerY > vh - EDGE_ZONE) {
+          vy = -((lastPointerY - (vh - EDGE_ZONE)) / EDGE_ZONE) * MAX_EDGE_SPEED;
+        }
+
+        if (vx !== 0 || vy !== 0) {
+          camX += vx;
+          camY += vy;
+          applyCameraTransform();
+
+          if (resizing) updateResizePreview(lastPointerX, lastPointerY);
+          if (dragging) updateDragPositionAndHitTest(lastPointerX, lastPointerY);
+        }
+
+        edgeScrollRaf = requestAnimationFrame(edgeScrollTick);
+      }
+
+      /* =========================================================
+         6. Playback, Lyrics & Cluster Sync
+         ========================================================= */
+      let currentTrackIndex = 0;
+      let activeLyricIndex = -1;
+      let rafId = null;
+      let vinylAngle = 0;
+      let vinylVelocity = 0;
+      const TARGET_VINYL_VEL = 1.15;
+
+      function currentTrack() {
+        return ALBUM.tracks[currentTrackIndex];
+      }
+
+      function clusterCards(index) {
+        return clusters[index] ? clusters[index].cards : [];
+      }
+
+      function clearLyricHighlights(exceptIndex) {
+        clusters.forEach((cluster, i) => {
+          if (i === exceptIndex) return;
+          cluster.lyricNodes.forEach((node) => node.classList.remove('active'));
+        });
+      }
+
+      function syncNowPlaying() {
+        const track = currentTrack();
+        nowPlayingLabel.textContent = track ? track.title : ALBUM.title;
+      }
+
+      function syncTrackPanelState() {
+        if (!trackPanelList) return;
+        trackPanelList.querySelectorAll('.track-panel-item').forEach((el, i) => {
+          el.classList.toggle('is-active', i === currentTrackIndex);
+          el.classList.toggle('is-playing', i === currentTrackIndex && engine.isPlaying);
+        });
+      }
+
+      function syncPlayStateUI() {
+        const playing = engine.isPlaying;
+        headerPlayBtn.classList.toggle('is-playing', playing);
+        headerPlayIcon.innerHTML = playing ? PAUSE_ICON_PATH : PLAY_ICON_PATH;
+
+        clusters.forEach((cluster, i) => {
+          const active = i === currentTrackIndex;
+          cluster.cards.forEach((card) => {
+            card.classList.toggle('is-active-cluster', active);
+            card.classList.toggle('is-playing', active && playing);
+          });
+          cluster.playIcon.innerHTML = active && playing ? PAUSE_ICON_PATH : PLAY_ICON_PATH;
+        });
+
+        syncTrackPanelState();
+        syncNowPlaying();
+        if (playing) ensureAnimationLoop();
+      }
+
+      function updateActiveLyric(currentTime, forceScroll = false) {
+        const track = currentTrack();
+        const cluster = clusters[currentTrackIndex];
+        if (!track || !cluster) return;
+
+        const lines = cluster.lyricLines;
+        if (!lines || !lines.length) return;
+
+        let idx = 0;
+        for (let i = 0; i < lines.length; i++) {
+          if (currentTime >= lines[i][0]) idx = i;
+          else break;
+        }
+
+        if (idx !== activeLyricIndex || forceScroll) {
+          activeLyricIndex = idx;
+          cluster.lyricNodes.forEach((node, i) => node.classList.toggle('is-active', i === idx));
+
+          const activeEl = cluster.lyricNodes[idx];
+          if (activeEl) {
+            const targetTop =
+              activeEl.offsetTop - cluster.lyricScroll.clientHeight / 2 + activeEl.clientHeight / 2;
+            cluster.lyricScroll.scrollTo({
+              top: Math.max(0, targetTop),
+              behavior: forceScroll ? 'auto' : 'smooth'
+            });
+          }
+        }
+      }
+
+      function updateTimelineUI(forceLyricScroll = false) {
+        const t = engine.currentTime;
+        const duration = engine.duration > 0 ? engine.duration : 1;
+        const timeStr = formatTime(t);
+
+        headerTimecode.textContent = `${timeStr} / ${formatTime(duration)}`;
+
+        const cluster = clusters[currentTrackIndex];
+        if (cluster) {
+          if (document.activeElement !== cluster.seek) {
+            cluster.seek.value = t.toFixed(1);
+          }
+          cluster.time.textContent = formatClock(t);
+          cluster.remaining.textContent = formatClock(Math.max(0, duration - t));
+          cluster.seek.style.setProperty('--p', `${Math.min(100, (t / duration) * 100).toFixed(2)}%`);
+        }
+
+        updateActiveLyric(t, forceLyricScroll);
+      }
+
+      function loadTrack(index, options = {}) {
+        const count = ALBUM.tracks.length;
+        const next = ((index % count) + count) % count;
+        const wasPlaying = engine.isPlaying;
+        const shouldPlay = options.autoplay === true || wasPlaying;
+
+        currentTrackIndex = next;
+        const track = ALBUM.tracks[next];
+
+        rootEl.style.setProperty('--theme-accent', track.accent);
+        rootEl.style.setProperty('--theme-accent-soft', track.accentSoft);
+
+        engine.load(track);
+        engine.pendingSeek = Number.isFinite(options.startAt) ? options.startAt : null;
+
+        activeLyricIndex = -1;
+        clearLyricHighlights(next);
+
+        const cluster = clusters[next];
+        if (cluster) {
+          cluster.seek.value = '0';
+          cluster.seek.style.setProperty('--p', '0%');
+          cluster.time.textContent = '0:00';
+          cluster.remaining.textContent = formatClock(track.duration);
+        }
+
+        syncPlayStateUI();
+        updateActiveLyric(engine.currentTime, true);
+        updateTimelineUI(true);
+        ensureAnimationLoop();
+
+        if (shouldPlay) {
+          engine.play();
+          syncPlayStateUI();
+        }
+      }
+
+      function handleRecordPlay(index) {
+        if (index !== currentTrackIndex) {
+          loadTrack(index, { autoplay: true });
+          return;
+        }
+        engine.toggle();
+        syncPlayStateUI();
+      }
+
+      function handleRecordStep(index, delta) {
+        const count = ALBUM.tracks.length;
+        const target = ((index + delta) % count + count) % count;
+        loadTrack(target, { autoplay: true });
+        flyToCluster(target, 640);
+      }
+
+      function handleSeekInput(index, value) {
+        if (!Number.isFinite(value)) return;
+        if (index !== currentTrackIndex) {
+          loadTrack(index, { autoplay: true, startAt: value });
+          return;
+        }
+        engine.seek(value, false);
+        updateTimelineUI(true);
+      }
+
+      function handleLyricSeek(index, time) {
+        if (index !== currentTrackIndex) {
+          loadTrack(index, { autoplay: true, startAt: time });
+          return;
+        }
+        engine.seek(time, true);
+        syncPlayStateUI();
+        updateTimelineUI(true);
+      }
+
+      function flyToCluster(index, duration = 640) {
+        const cluster = clusters[index];
+        if (!cluster) return;
+        focusCards(cluster.cards, duration, 0.95);
+      }
+
+      function ensureClusterVisible(index) {
+        const cards = clusterCards(index);
+        if (!cards.length) return;
+
+        const vp = getViewportRect();
+        const pad = 48;
+        let visible = false;
+
+        cards.forEach((card) => {
+          const rect = card.getBoundingClientRect();
+          if (
+            rect.right > vp.left + pad &&
+            rect.left < vp.right - pad &&
+            rect.bottom > vp.top + pad &&
+            rect.top < vp.bottom - pad
+          ) {
+            visible = true;
+          }
+        });
+
+        if (!visible) flyToCluster(index, 720);
+      }
+
+      function animate(nowTs) {
+        const energy = engine.tick(nowTs);
+        rootEl.style.setProperty('--audio-energy', energy.toFixed(3));
+
+        const active = clusters[currentTrackIndex];
+        if (active) {
+          active.cards.forEach((card) => card.style.setProperty('--cluster-energy', energy.toFixed(3)));
+        }
+
+        if (engine.isPlaying) {
+          vinylVelocity += (TARGET_VINYL_VEL - vinylVelocity) * 0.08;
+        } else {
+          vinylVelocity *= 0.955;
+          if (vinylVelocity < 0.004) vinylVelocity = 0;
+        }
+
+        if (vinylVelocity > 0 && active) {
+          vinylAngle = (vinylAngle + vinylVelocity) % 360;
+          active.disc.style.transform = `rotate(${vinylAngle.toFixed(2)}deg)`;
+        }
+
+        updateTimelineUI(false);
+
+        if (engine.isPlaying || vinylVelocity > 0 || energy > 0.005) {
+          rafId = requestAnimationFrame(animate);
+        } else {
+          rafId = null;
+          rootEl.style.setProperty('--audio-energy', '0');
+          if (active) {
+            active.cards.forEach((card) => card.style.setProperty('--cluster-energy', '0'));
+          }
+        }
+      }
+
+      function ensureAnimationLoop() {
+        if (!rafId) {
+          engine.lastFrameTs = performance.now();
+          rafId = requestAnimationFrame(animate);
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && engine.isPlaying) {
+          engine.pause();
+          syncPlayStateUI();
+        }
+      });
+
+      /* =========================================================
+         10. FLIP Grid Reflow Helper (Scale-aware)
+         ========================================================= */
+      function flipGridMutation(mutateFn, excludeEl = null) {
+        const cards = Array.from(spatialGrid.querySelectorAll('.widget-card')).filter(
+          (c) => c !== excludeEl
+        );
+        const firstRects = new Map();
+        cards.forEach((c) => firstRects.set(c, c.getBoundingClientRect()));
+
+        mutateFn();
+
+        const scaleFactor = camScale;
+        cards.forEach((c) => {
+          const first = firstRects.get(c);
+          const last = c.getBoundingClientRect();
+          const dx = (first.left - last.left) / scaleFactor;
+          const dy = (first.top - last.top) / scaleFactor;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            c.style.transition = 'none';
+            c.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+            requestAnimationFrame(() => {
+              c.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+              c.style.transform = '';
+            });
+          }
+        });
+      }
+
+      /* =========================================================
+         11. Rock-Solid Bottom-Right Drag-to-Resize + Edge Scroll
+         ========================================================= */
+      const GRID_COLS = 4;
+      const BASE_GRID_WIDTH = 1180;
+      const GRID_GAP = 16;
+      const GRID_CELL_H = 210;
+
+      function getGridMetrics() {
+        const cellW = (BASE_GRID_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+        return { cols: GRID_COLS, cellW, cellH: GRID_CELL_H, gap: GRID_GAP };
+      }
+
+      function parseSizeStr(str) {
+        const [w, h] = str.split('x').map(Number);
+        return { w, h };
+      }
+
+      function pickNearestAllowedSize(rawW, rawH, allowedList) {
+        let best = allowedList[0];
+        let bestDist = Infinity;
+        allowedList.forEach((sizeStr) => {
+          const { w, h } = parseSizeStr(sizeStr);
+          const dist = Math.hypot(w - rawW, h - rawH);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = sizeStr;
+          }
+        });
+        return best;
+      }
+
+      let activeResize = null;
+
+      function updateResizePreview(clientX, clientY) {
+        if (!activeResize) return;
+        const { card, metrics, allowed } = activeResize;
+        const cardRect = card.getBoundingClientRect();
+        const scale = camScale;
+
+        // Compute proposed size directly from card's current screen top-left to pointer
+        const proposedW = Math.max(80, (clientX - cardRect.left) / scale);
+        const proposedH = Math.max(80, (clientY - cardRect.top) / scale);
+
+        const rawCols = (proposedW + metrics.gap) / (metrics.cellW + metrics.gap);
+        const rawRows = (proposedH + metrics.gap) / (metrics.cellH + metrics.gap);
+
+        const snapped = pickNearestAllowedSize(rawCols, rawRows, allowed);
+        activeResize.targetSize = snapped;
+
+        const { w, h } = parseSizeStr(snapped);
+        const ghostW = (w * metrics.cellW + (w - 1) * metrics.gap) * scale;
+        const ghostH = (h * metrics.cellH + (h - 1) * metrics.gap) * scale;
+
+        resizePreviewGhost.style.left = `${cardRect.left}px`;
+        resizePreviewGhost.style.top = `${cardRect.top}px`;
+        resizePreviewGhost.style.width = `${ghostW}px`;
+        resizePreviewGhost.style.height = `${ghostH}px`;
+      }
+
+      /**
+       * Single unconditional cleanup routine for resize.
+       * Bound to window pointerup, pointercancel, blur, and handle lostpointercapture.
+       */
+      function cleanupResize(commit = true) {
+        if (!activeResize) {
+          resizePreviewGhost.classList.remove('visible');
+          resizePreviewGhost.style.display = 'none';
+          resizePreviewGhost.style.opacity = '0';
+          return;
+        }
+
+        const { card, handle, pointerId, targetSize } = activeResize;
+        activeResize = null;
+
+        // Unconditionally hide preview box
+        resizePreviewGhost.classList.remove('visible');
+        resizePreviewGhost.style.display = 'none';
+        resizePreviewGhost.style.opacity = '0';
+
+        card.classList.remove('is-resizing');
+        document.body.style.cursor = '';
+        stopEdgeScrollLoop();
+
+        try {
+          if (handle.hasPointerCapture(pointerId)) {
+            handle.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+
+        if (commit && targetSize) {
+          const oldSpan = getCardSpan(card);
+          const newSpan = parseSizeStr(targetSize);
+          const cell = getCardCell(card);
+          flipGridMutation(() => {
+            card.dataset.size = targetSize;
+            resolveResizeYield(card, cell, oldSpan, newSpan);
+            applyCardPositions();
+          });
+        }
+      }
+
+      spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+        const handle = card.querySelector('.resize-handle');
+        if (!handle) return;
+
+        handle.addEventListener('pointerdown', (e) => {
+          // 只响应主键；右键/中键不应进入缩放，也不该吞掉右键菜单
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          if (activeResize) return;
+          if (dragState) return; // 重排进行中（多指场景）不要叠一套缩放状态机
+          // Space + 左键优先级高于缩放，交给画布平移
+          if (isSpacePressed) return;
+          e.stopPropagation();
+          e.preventDefault();
+
+          const rect = card.getBoundingClientRect();
+          const metrics = getGridMetrics();
+          const allowed = (card.dataset.allowedSizes || '1x1,2x1,2x2').split(',');
+
+          lastPointerX = e.clientX;
+          lastPointerY = e.clientY;
+
+          activeResize = {
+            card,
+            handle,
+            pointerId: e.pointerId,
+            metrics,
+            allowed,
+            targetSize: card.dataset.size
+          };
+
+          card.classList.add('is-resizing');
+          document.body.style.cursor = 'nwse-resize';
+          try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+
+          resizePreviewGhost.style.display = 'block';
+          resizePreviewGhost.style.opacity = '1';
+          resizePreviewGhost.style.left = `${rect.left}px`;
+          resizePreviewGhost.style.top = `${rect.top}px`;
+          resizePreviewGhost.style.width = `${rect.width}px`;
+          resizePreviewGhost.style.height = `${rect.height}px`;
+          resizePreviewGhost.classList.add('visible');
+
+          startEdgeScrollLoop();
+        });
+
+        handle.addEventListener('lostpointercapture', () => {
+          if (activeResize && activeResize.handle === handle) {
+            cleanupResize(true);
+          }
+        });
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (activeResize) {
+          // 只跟随发起缩放的指针，多指触摸时不被另一根手指带偏
+          if (e.pointerId !== activeResize.pointerId) return;
+          lastPointerX = e.clientX;
+          lastPointerY = e.clientY;
+          updateResizePreview(e.clientX, e.clientY);
+          return;
+        }
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (activeResize && e.pointerId === activeResize.pointerId) cleanupResize(true);
+      });
+
+      window.addEventListener('pointercancel', (e) => {
+        if (activeResize && e.pointerId === activeResize.pointerId) cleanupResize(false);
+      });
+
+      window.addEventListener('blur', () => {
+        if (activeResize) cleanupResize(false);
+      });
+
+      /* =========================================================
+         12. Free-Form Grid: Long-Press Drag, Conflict Yield & Edge Scroll
+         ========================================================= */
+      const LONG_PRESS_MS = 260;
+      // 拖起时的放大倍数；抓取点保持在指针下，放大只是视觉提示
+      const LIFT_SCALE = 1.03;
+      let dragState = null;
+
+      function getCardSpan(card) {
+        const [w, h] = (card.dataset.size || '1x1').split('x').map(Number);
+        return { w: w || 1, h: h || 1 };
+      }
+
+      function getCardCell(card) {
+        const col = Number.parseInt(card.dataset.col, 10);
+        const row = Number.parseInt(card.dataset.row, 10);
+        return {
+          col: Number.isFinite(col) ? col : 0,
+          row: Number.isFinite(row) ? row : 0
+        };
+      }
+
+      function setCardCell(card, col, row) {
+        card.dataset.col = String(col);
+        card.dataset.row = String(row);
+      }
+
+      function cellToRect(col, row, span) {
+        const m = getGridMetrics();
+        return {
+          left: col * (m.cellW + m.gap),
+          top: row * (m.cellH + m.gap),
+          width: span.w * m.cellW + (span.w - 1) * m.gap,
+          height: span.h * m.cellH + (span.h - 1) * m.gap
+        };
+      }
+
+      /**
+       * 按 data-col/row 绝对定位。坐标不设上下限（负数和很远的值都合法），
+       * 空位保留、不自动补位；所有断点共用同一套无限画布。
+       */
+      function applyCardPositions() {
+        spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+          const span = getCardSpan(card);
+          const { col, row } = getCardCell(card);
+          const rect = cellToRect(col, row, span);
+          card.style.position = 'absolute';
+          card.style.left = `${rect.left}px`;
+          card.style.top = `${rect.top}px`;
+          card.style.width = `${rect.width}px`;
+          card.style.height = `${rect.height}px`;
+          card.classList.remove('sz-1x1', 'sz-1x2', 'sz-2x1', 'sz-2x2');
+          card.classList.add(`sz-${span.w}x${span.h}`);
+        });
+      }
+
+      function positionPlaceholder(placeholder, col, row, span) {
+        if (!placeholder) return;
+        placeholder.dataset.size = `${span.w}x${span.h}`;
+        const rect = cellToRect(col, row, span);
+        placeholder.style.position = 'absolute';
+        placeholder.style.left = `${rect.left}px`;
+        placeholder.style.top = `${rect.top}px`;
+        placeholder.style.width = `${rect.width}px`;
+        placeholder.style.height = `${rect.height}px`;
+      }
+
+      function rectsOverlap(a, b) {
+        return (
+          a.col < b.col + b.w &&
+          a.col + a.w > b.col &&
+          a.row < b.row + b.h &&
+          a.row + a.h > b.row
+        );
+      }
+
+      function yieldDirection(fromCol, fromRow, toCol, toRow) {
+        const dc = toCol - fromCol;
+        const dr = toRow - fromRow;
+        if (dc === 0 && dr === 0) return null;
+        if (Math.abs(dc) >= Math.abs(dr)) return dc > 0 ? 'right' : 'left';
+        return dr > 0 ? 'down' : 'up';
+      }
+
+      /**
+       * 冲突让位：只沿拖拽的主导方向把重叠的卡片逐格推出去。
+       * 空位不补位，坐标没有边界，负数也照常推。
+       */
+      function resolveYield(target, movables, direction) {
+        const step =
+          direction === 'left' ? { dc: -1, dr: 0 }
+          : direction === 'right' ? { dc: 1, dr: 0 }
+          : direction === 'up' ? { dc: 0, dr: -1 }
+          : { dc: 0, dr: 1 };
+
+        // 先处理推进方向上最靠外的那张，再依次向回处理，避免两张卡互相顶住
+        const sorted = movables.slice().sort((a, b) => {
+          if (step.dc !== 0) return step.dc > 0 ? b.col - a.col : a.col - b.col;
+          return step.dr > 0 ? b.row - a.row : a.row - b.row;
+        });
+
+        const placed = [target];
+        sorted.forEach((item) => {
+          let guard = 0;
+          const rect = () => ({ col: item.col, row: item.row, w: item.w, h: item.h });
+          while (placed.some((p) => rectsOverlap(rect(), p)) && guard < 2000) {
+            item.col += step.dc;
+            item.row += step.dr;
+            guard += 1;
+          }
+          placed.push({ col: item.col, row: item.row, w: item.w, h: item.h });
+        });
+      }
+
+      function previewFreePlacement(col, row) {
+        if (!dragState || !dragState.snapshot) return;
+        const { card, snapshot, startCell, placeholder } = dragState;
+        const span = getCardSpan(card);
+        const direction = yieldDirection(startCell.col, startCell.row, col, row);
+
+        // 每次预览都从拖动前的快照重算，来回拖不会把卡片越推越远
+        const movables = [];
+        snapshot.forEach((cell, other) => {
+          if (other === card) return;
+          const s = getCardSpan(other);
+          movables.push({ card: other, col: cell.col, row: cell.row, w: s.w, h: s.h });
+        });
+
+        if (direction) {
+          resolveYield({ col, row, w: span.w, h: span.h }, movables, direction);
+        }
+
+        positionPlaceholder(placeholder, col, row, span);
+        flipGridMutation(() => {
+          movables.forEach((m) => setCardCell(m.card, m.col, m.row));
+          applyCardPositions();
+        }, card);
+      }
+
+      function updateDragPositionAndHitTest(clientX, clientY) {
+        if (!dragState || dragState.phase !== 'dragging') return;
+        const { card, grabOffsetX, grabOffsetY } = dragState;
+
+        // 卡片被放大 LIFT_SCALE 后，抓取点距左上角也同比变大，所以位移要乘以 LIFT_SCALE 补偿
+        const left = clientX - grabOffsetX * LIFT_SCALE;
+        const top = clientY - grabOffsetY * LIFT_SCALE;
+        card.style.left = `${left}px`;
+        card.style.top = `${top}px`;
+
+        // 用卡片左上角（不是指针）换算目标格，抓在卡片哪个位置就保持那个位置
+        const m = getGridMetrics();
+        const worldLeft = (left - camX) / camScale;
+        const worldTop = (top - camY) / camScale;
+        const col = Math.round(worldLeft / (m.cellW + m.gap));
+        const row = Math.round(worldTop / (m.cellH + m.gap));
+
+        if (dragState.targetCell && dragState.targetCell.col === col && dragState.targetCell.row === row) {
+          return;
+        }
+        dragState.targetCell = { col, row };
+        previewFreePlacement(col, row);
+      }
+
+      spatialGrid.querySelectorAll('.widget-card').forEach((card) => {
+        const zone = card.querySelector('.drag-handle-zone');
+        if (!zone) return;
+
+        zone.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          if (dragState) return; // 上一次重排还在收尾时不要重入，否则定时器会互相覆盖
+          if (activeResize) return; // 缩放进行中（多指场景）不要叠一套重排状态机
+          // 按住 Space 时左键拖拽一律视为画布平移
+          if (isSpacePressed) return;
+          // 不 stopPropagation / 不捕获：长按前若先拖动，window 层会把它当成画布平移
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const pointerId = e.pointerId;
+          lastPointerX = startX;
+          lastPointerY = startY;
+
+          card.classList.add('is-holding');
+
+          const timer = setTimeout(() => {
+            beginCardReorder(card, zone, pointerId, startX, startY);
+          }, LONG_PRESS_MS);
+
+          dragState = {
+            phase: 'pending',
+            card,
+            zone,
+            pointerId,
+            startX,
+            startY,
+            timer,
+            placeholder: null,
+            grabOffsetX: 0,
+            grabOffsetY: 0
+          };
+
+        });
+
+        function handleDragEnd(e) {
+          if (!dragState || dragState.card !== card) return;
+          if (e && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
+          if (dragState.phase === 'pending') {
+            cancelPendingDrag();
+          } else if (dragState.phase === 'dragging') {
+            finishCardReorder();
+          }
+        }
+
+        zone.addEventListener('pointerup', handleDragEnd);
+        zone.addEventListener('pointercancel', handleDragEnd);
+      });
+
+      // 拖拽期间卡片会被移到 body，pointer capture 可能随之丢失，
+      // 所以移动统一用 window 上的 pointermove 驱动，而不是依赖 zone 的捕获。
+      window.addEventListener('pointermove', (e) => {
+        if (!dragState || e.pointerId !== dragState.pointerId) return;
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+
+        if (dragState.phase === 'pending') {
+          if (Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) > 8) {
+            cancelPendingDrag();
+          }
+          return;
+        }
+
+        if (dragState.phase === 'dragging') {
+          e.preventDefault();
+          updateDragPositionAndHitTest(e.clientX, e.clientY);
+        }
+      });
+
+      // 窗口失焦（Alt+Tab、切应用）时指针事件会断，必须主动收尾，否则重排卡在 dragging
+      function endCardDragFromWindow(e) {
+        if (!dragState || (e && e.pointerId != null && e.pointerId !== dragState.pointerId)) return;
+        if (dragState.phase === 'dragging') {
+          finishCardReorder();
+        } else if (dragState.phase === 'pending') {
+          cancelPendingDrag();
+        }
+      }
+
+      window.addEventListener('blur', () => endCardDragFromWindow(null));
+      // 指针捕获失败 / 在卡片外释放时也能收尾
+      window.addEventListener('pointerup', endCardDragFromWindow);
+      window.addEventListener('pointercancel', endCardDragFromWindow);
+
+      function cancelPendingDrag() {
+        if (!dragState) return;
+        clearTimeout(dragState.timer);
+        dragState.card.classList.remove('is-holding');
+        try {
+          if (dragState.zone.hasPointerCapture(dragState.pointerId)) {
+            dragState.zone.releasePointerCapture(dragState.pointerId);
+          }
+        } catch (_) {}
+        dragState = null;
+      }
+
+      function beginCardReorder(card, zone, pointerId, startX, startY) {
+        if (!dragState || dragState.card !== card) return;
+        stopTouchGesture(); // 长按成立时，取消触摸层已经开始的平移
+        suppressClickUntil = performance.now() + 250;
+        const rect = card.getBoundingClientRect();
+        const cameraScale = camScale;
+        const grabOffsetX = startX - rect.left;
+        const grabOffsetY = startY - rect.top;
+        const startCell = getCardCell(card);
+
+        // 记录拖动前的快照，之后每次让位预览都从它重算
+        const snapshot = new Map();
+        spatialGrid.querySelectorAll('.widget-card').forEach((c) => snapshot.set(c, getCardCell(c)));
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.dataset.size = card.dataset.size;
+
+        card.parentNode.insertBefore(placeholder, card);
+        // 显式释放 zone 上的捕获再搬走卡片：移动已捕获的元素会触发 lostpointercapture，
+        // 随后把捕获转给 canvasViewport（它不会被移动），指针移出窗口时仍能收到事件
+        try {
+          if (zone.hasPointerCapture(pointerId)) zone.releasePointerCapture(pointerId);
+        } catch (_) {}
+        document.body.appendChild(card);
+        try { canvasViewport.setPointerCapture(pointerId); } catch (_) {}
+
+        card.classList.remove('is-holding');
+        card.classList.add('is-lifted');
+        card.style.position = 'fixed';
+        // 宽度用「世界单位」保存，再用 transform 乘回相机缩放，卡片内部比例与画布上完全一致
+        card.style.width = `${rect.width / cameraScale}px`;
+        card.style.height = `${rect.height / cameraScale}px`;
+        card.style.left = `${startX - grabOffsetX * LIFT_SCALE}px`;
+        card.style.top = `${startY - grabOffsetY * LIFT_SCALE}px`;
+        card.style.margin = '0';
+        card.style.transformOrigin = '0 0';
+        card.style.transform = `scale(${cameraScale * LIFT_SCALE})`;
+        card.style.transition = 'none';
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+
+        dragState.phase = 'dragging';
+        dragState.placeholder = placeholder;
+        dragState.grabOffsetX = grabOffsetX;
+        dragState.grabOffsetY = grabOffsetY;
+        dragState.startCell = startCell;
+        dragState.targetCell = { col: startCell.col, row: startCell.row };
+        dragState.snapshot = snapshot;
+
+        positionPlaceholder(placeholder, startCell.col, startCell.row, getCardSpan(card));
+
+        startEdgeScrollLoop();
+      }
+
+      function resolveResizeYield(card, cell, oldSpan, newSpan) {
+        if (!newSpan) return;
+        const grewW = newSpan.w > oldSpan.w;
+        const grewH = newSpan.h > oldSpan.h;
+        if (!grewW && !grewH) return;
+
+        const direction = grewW ? 'right' : 'down';
+        const movables = [];
+        spatialGrid.querySelectorAll('.widget-card').forEach((other) => {
+          if (other === card) return;
+          const span = getCardSpan(other);
+          const c = getCardCell(other);
+          movables.push({ card: other, col: c.col, row: c.row, w: span.w, h: span.h });
+        });
+
+        resolveYield({ col: cell.col, row: cell.row, w: newSpan.w, h: newSpan.h }, movables, direction);
+        movables.forEach((m) => setCardCell(m.card, m.col, m.row));
+      }
+
+      function finishCardReorder() {
+        if (!dragState) return;
+        const reorder = dragState;
+        const { card, zone, pointerId, placeholder, targetCell } = reorder;
+        dragState.phase = 'settling';
+        suppressClickUntil = performance.now() + 250;
+        stopEdgeScrollLoop();
+
+        try {
+          if (zone.hasPointerCapture(pointerId)) {
+            zone.releasePointerCapture(pointerId);
+          }
+          if (canvasViewport.hasPointerCapture(pointerId)) {
+            canvasViewport.releasePointerCapture(pointerId);
+          }
+        } catch (_) {}
+
+        const destRect = placeholder.getBoundingClientRect();
+        const cameraScale = camScale;
+        card.style.transition =
+          'left 0.28s cubic-bezier(0.22, 1, 0.36, 1), top 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
+        card.style.left = `${destRect.left}px`;
+        card.style.top = `${destRect.top}px`;
+        // 卡片现在是 body 的直接子元素，不再受 world 缩放，收尾时把相机缩放乘回来
+        card.style.transform = `scale(${cameraScale})`;
+
+        setTimeout(() => {
+          card.classList.remove('is-lifted');
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.height = '';
+          card.style.margin = '';
+          card.style.transition = '';
+          card.style.transform = '';
+          card.style.transformOrigin = '';
+
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+
+          if (targetCell) {
+            setCardCell(card, targetCell.col, targetCell.row);
+          }
+
+          if (placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(card, placeholder);
+            placeholder.remove();
+          }
+
+          applyCardPositions();
+
+          // 只清理本次会话，避免旧定时器把新一轮拖拽的 dragState 置空
+          if (dragState === reorder) dragState = null;
+        }, 320);
+      }
+
+      /* =========================================================
+         13. Track Panel, Story Lightbox & Header Transport
+         ========================================================= */
+      function buildTrackPanel() {
+        const frag = document.createDocumentFragment();
+
+        ALBUM.tracks.forEach((track, index) => {
+          const li = document.createElement('li');
+          li.className = 'track-panel-item';
+          li.dataset.index = String(index);
+          li.setAttribute('role', 'button');
+          li.tabIndex = 0;
+          li.style.setProperty('--cluster-accent', track.accent);
+          li.innerHTML = `
+            <span class="tp-num">${String(index + 1).padStart(2, '0')}</span>
+            <span class="tp-main">
+              <span class="tp-name">${escapeHtml(track.title)}</span>
+            </span>
+            <span class="eq-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="tp-dur">${formatTime(track.duration)}</span>`;
+
+          const activate = () => {
+            flyToCluster(index, 640);
+            if (index === currentTrackIndex) {
+              engine.toggle();
+              syncPlayStateUI();
+            } else {
+              loadTrack(index, { autoplay: true });
+            }
+            closeTrackPanel();
+          };
+
+          li.addEventListener('click', activate);
+          li.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              activate();
+            }
+          });
+
+          frag.appendChild(li);
+        });
+
+        trackPanelList.appendChild(frag);
+      }
+
+      function openTrackPanel() {
+        trackPanel.classList.add('open');
+        trackPanel.setAttribute('aria-hidden', 'false');
+        btnTracks.setAttribute('aria-expanded', 'true');
+      }
+
+      function closeTrackPanel() {
+        trackPanel.classList.remove('open');
+        trackPanel.setAttribute('aria-hidden', 'true');
+        btnTracks.setAttribute('aria-expanded', 'false');
+      }
+
+      function toggleTrackPanel() {
+        if (trackPanel.classList.contains('open')) closeTrackPanel();
+        else openTrackPanel();
+      }
+
+      btnTracks.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleTrackPanel();
+      });
+
+      document.addEventListener('pointerdown', (e) => {
+        if (!trackPanel.classList.contains('open')) return;
+        if (trackPanel.contains(e.target) || btnTracks.contains(e.target)) return;
+        closeTrackPanel();
+      });
+
+      function handleTogglePlay() {
+        engine.toggle();
+        syncPlayStateUI();
+      }
+
+      headerPlayBtn.addEventListener('click', handleTogglePlay);
+
+      // 点完按钮主动失焦，否则下一次按 Space 会重新触发该按钮而不是平移画布
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('button');
+        if (btn && e.detail > 0) btn.blur();
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (trackPanel.classList.contains('open')) closeTrackPanel();
+      });
+
+      /* =========================================================
+         14. Bootstrap
+         ========================================================= */
+      buildTrackPanel();
+
+      engine.onEnded = () => {
+        loadTrack(currentTrackIndex + 1, { autoplay: true });
+        ensureClusterVisible(currentTrackIndex);
+      };
+      engine.onPlaybackError = syncPlayStateUI;
+
+      // 元数据到达后同步真实时长，并把 pendingSeek 的应用结果刷到 UI
+      engine.audio.addEventListener('loadedmetadata', () => {
+        const d = engine.duration;
+        if (!(d > 0)) return;
+        const cluster = clusters[currentTrackIndex];
+        if (cluster) {
+          cluster.remaining.textContent = formatClock(Math.max(0, d - engine.currentTime));
+          cluster.seek.max = d.toFixed(1);
+        }
+        updateTimelineUI(true);
+      });
+
+      applyCardPositions();
+      loadTrack(0);
+      focusInitialView();
+
+      window.onload = () => {
+        applyCardPositions();
+        focusInitialView();
+        updateTimelineUI(true);
+      };
+
+    })();
+  </script>
+</body>
+</html>

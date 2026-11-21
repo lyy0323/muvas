@@ -1,0 +1,1392 @@
+/* ==========================================================================
+   components.css 和诗以歌 UI 组件库
+   --------------------------------------------------------------------------
+   组件（5 类）
+     c-record   唱片 / 播放器
+     c-story    创作手记
+     c-visual   四周年插画
+     c-lyrics   歌词
+     c-marker   章节牌（固定 1×2）
+
+   尺寸（卡片 4 档，和 1180px / 4 列 / 16px gap 的网格对齐）
+     sz-1x1   283 × 210
+     sz-1x2   283 × 436
+     sz-2x1   582 × 210
+     sz-2x2   582 × 436
+
+   使用方式
+     <article class="c-card c-record sz-2x1">…</article>
+   c-card 只负责卡片壳（圆角 / 边框 / 阴影 / 裁切），尺寸由使用页面决定；
+   sz-* 负责组件内部的版式重排。
+
+   可变样式（每个组件必须由使用方指定，没有全局紫色默认值）
+     --cluster-accent   主题色（序号、引文线、进度点、插图光晕）
+     --cluster-soft     主题色的透明底色（选中歌词、激活描边）
+     页面级强调色（页头、面板、投影）用 --theme-accent / --theme-accent-soft，
+     由当前曲目决定；换歌时只换这两个变量。
+
+   状态
+     .is-active-cluster 当前正在展示的曲目组
+     .is-playing        音频正在播放
+   ========================================================================== */
+
+/* ==========================================================================
+   1. Design Tokens
+   ========================================================================== */
+:root {
+  --bg-canvas: #333333;
+  --text-primary: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #8A817C;
+
+  --surface-card: #FFFFFF;
+  --surface-paper: #FCF9F5;
+  --surface-note: #FDFBF7;
+  --border-subtle: rgba(28, 25, 23, 0.07);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --shadow-card:
+    0 1px 2px rgba(28, 25, 23, 0.04),
+    0 8px 24px -6px rgba(68, 52, 79, 0.08),
+    0 2px 6px -1px rgba(28, 25, 23, 0.03);
+  --shadow-card-hover:
+    0 2px 4px rgba(28, 25, 23, 0.05),
+    0 14px 32px -8px rgba(68, 52, 79, 0.13);
+  --shadow-lifted:
+    0 22px 48px -10px rgba(45, 34, 62, 0.24),
+    0 8px 20px -4px rgba(28, 25, 23, 0.12);
+
+  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+/* ==========================================================================
+   2. Card Shell
+   ========================================================================== */
+.c-card {
+  position: relative;
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.c-card--dark {
+  background: #14121A;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.c-card.is-active-cluster {
+  border-color: var(--cluster-accent);
+  box-shadow:
+    0 0 0 2px var(--cluster-soft),
+    0 18px 40px -20px rgba(28, 25, 23, 0.4);
+}
+
+/* 纸纹 */
+.paper-grain {
+  position: relative;
+}
+
+.paper-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ==========================================================================
+   3. Primitives
+   ========================================================================== */
+
+/* 3.2 播放按钮 */
+.c-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--text-primary);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(28, 25, 23, 0.22);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.c-play:hover {
+  transform: scale(1.05);
+  background: #2E2926;
+}
+
+.c-play:active {
+  transform: scale(0.95);
+}
+
+/* 3.3 进度 */
+.c-progress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.c-progress__range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    #16171b 0 var(--p, 0%),
+    rgba(27, 36, 64, 0.13) var(--p, 0%) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.c-progress__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #16171b;
+  border: none;
+  box-shadow: 0 2px 5px rgba(22, 23, 27, 0.3);
+  cursor: pointer;
+}
+
+.c-progress__range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #16171b;
+  border: none;
+  box-shadow: 0 2px 5px rgba(22, 23, 27, 0.3);
+  cursor: pointer;
+}
+
+.c-progress__times {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #8a8f9c;
+}
+
+/* 3.4 和纸胶带 */
+.c-tape {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1.5deg);
+  width: 92px;
+  height: 20px;
+  background: rgba(235, 227, 218, 0.86);
+  border-left: 2px dotted rgba(255, 255, 255, 0.75);
+  border-right: 2px dotted rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 6px rgba(28, 25, 23, 0.07);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 3.5 图片题注 */
+.c-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 24px 16px 12px;
+  background: linear-gradient(to top, rgba(20, 17, 26, 0.72), transparent);
+  color: #F8F2F5;
+  pointer-events: none;
+}
+
+.c-caption__title {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 3.6 制作名单：字段 badge + 值 plaintext */
+.c-credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 14px;
+}
+
+.c-credits__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.c-credits__key {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid rgba(28, 25, 23, 0.13);
+  border-radius: 4px;
+  background: rgba(28, 25, 23, 0.03);
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.c-credits__value {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   4. c-record · 唱机 / 卡槽 CD
+   --------------------------------------------------------------------------
+   来自 slot-cd.html：CD 从卡槽里探出来，播放时旋转；暂停时播放键是彩虹圆盘。
+   字段
+     .c-record__deck      面板（浅色硬件）
+     .c-record__disc      CD 容器；.c-record__disc-spin 旋转，label 固定
+     .c-record__slot      卡槽
+     .c-record__eyebrow   EQ + 状态
+     .c-record__title     曲名
+     .c-record__artist    署名
+     .c-record__credits   制作名单（仅 2x2）
+     .c-record__controls  上一首 / 播放 / 下一首
+     .c-progress          进度
+   数据钩子
+     [data-role="disc|play|seek|time|remaining|prev|next"]
+   ========================================================================== */
+.c-record {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.c-record.is-active-cluster {
+  border: none;
+  box-shadow: none;
+}
+
+.c-record__deck {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #fbfbfd 0%, #eceef3 100%);
+  box-shadow:
+    0 20px 40px -14px rgba(22, 23, 27, 0.32),
+    0 3px 8px rgba(22, 23, 27, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+.c-record.is-active-cluster .c-record__deck {
+  border: 1px solid var(--cluster-accent);
+  box-shadow:
+    0 0 0 2px var(--cluster-soft),
+    0 20px 40px -14px rgba(22, 23, 27, 0.32),
+    0 3px 8px rgba(22, 23, 27, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ---------- CD ---------- */
+.c-record__disc {
+  --disc-size: 168px;
+  position: absolute;
+  top: 21px;
+  left: 24px;
+  z-index: 3;
+  width: var(--disc-size);
+  height: var(--disc-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1c1d22;
+  box-shadow: 0 14px 28px rgba(22, 23, 27, 0.3);
+}
+
+.c-record__disc-spin {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.c-record__disc-art {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.c-record__disc-grooves {
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.16) 0deg 0.5deg,
+    transparent 0.5deg 10deg
+  );
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
+.c-record__disc-irid {
+  position: absolute;
+  left: 31.7%;
+  top: 31.7%;
+  width: 36.6%;
+  height: 36.6%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #b9bcc6 0%,
+    #7f9be6 6%,
+    #86d49a 12%,
+    #e3d46a 17%,
+    #ee9e74 23%,
+    #b7aeb8 30%,
+    #b9bcc6 50%,
+    #7f9be6 56%,
+    #86d49a 62%,
+    #e3d46a 67%,
+    #ee9e74 73%,
+    #b7aeb8 80%,
+    #b9bcc6 100%
+  );
+}
+
+.c-record__disc-label {
+  position: absolute;
+  left: 35.4%;
+  top: 35.4%;
+  width: 29.2%;
+  height: 29.2%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fafbfd 0%, #e1e4ea 100%);
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+
+.c-record__disc-ring {
+  width: 68%;
+  height: 68%;
+  border-radius: 50%;
+  background: #cdd0d6;
+  display: grid;
+  place-items: center;
+}
+
+.c-record__disc-hole {
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  background: #7d7f88;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.c-record__disc-sheen,
+.c-record__disc-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.c-record__disc-sheen {
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 12%,
+    rgba(255, 255, 255, 0) 25%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.2) 72%,
+    rgba(255, 255, 255, 0) 85%
+  );
+}
+
+.c-record__disc-rim {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.7)) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* ---------- 卡槽 ---------- */
+.c-record__slot {
+  position: absolute;
+  z-index: 2;
+  height: 8px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #2a2c33 0%, #4a4d57 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ---------- 面板内容 ---------- */
+.c-record__body {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  text-align: center;
+}
+
+.c-record__eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a8f9c;
+}
+
+.c-record__eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+
+.c-record__eq i {
+  width: 2px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--cluster-accent);
+  animation: c-record-eq 0.9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+.c-record__eq i:nth-child(2) { height: 8px; animation-delay: -0.18s; }
+.c-record__eq i:nth-child(3) { height: 6px; animation-delay: -0.36s; }
+.c-record__eq i:nth-child(4) { height: 10px; animation-delay: -0.1s; }
+.c-record__eq i:nth-child(5) { height: 5px; animation-delay: -0.52s; }
+
+.c-record.is-playing .c-record__eq i {
+  animation-play-state: running;
+}
+
+@keyframes c-record-eq {
+  from { height: 3px; }
+  to { height: 11px; }
+}
+
+.c-record__title {
+  max-width: 100%;
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: #16171b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-record__artist {
+  max-width: 100%;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  color: #8a8f9c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-record__credits {
+  display: none;
+  width: 100%;
+}
+
+.c-record__body .c-progress {
+  flex: none;
+  width: 100%;
+}
+
+.c-record__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 1px;
+}
+
+.c-record__nav {
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #16171b;
+  opacity: 0.55;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.c-record__nav:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.c-record__nav:active {
+  transform: scale(0.94);
+}
+
+.c-record__nav svg {
+  display: block;
+  width: 14px;
+  height: 13px;
+}
+
+.c-record .c-play {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  box-shadow:
+    0 6px 14px -4px rgba(22, 23, 27, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.35),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.25);
+}
+
+.c-record .c-play::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #b3f6c2 0deg,
+    #c8ecb3 20deg,
+    #e5e6a6 40deg,
+    #f1dd96 60deg,
+    #f7d27f 80deg,
+    #f2c27c 100deg,
+    #eaa784 120deg,
+    #e28c94 140deg,
+    #d37ba0 160deg,
+    #b077ac 180deg,
+    #9b75c2 200deg,
+    #8b7fe3 220deg,
+    #8199e5 240deg,
+    #7cb2ed 260deg,
+    #77ccf1 280deg,
+    #8fdeed 300deg,
+    #9ce7dd 320deg,
+    #a6f1ca 340deg,
+    #b3f6c2 360deg
+  );
+  transition: opacity 0.5s ease;
+}
+
+.c-record.is-playing .c-play::before {
+  opacity: 0;
+}
+
+.c-record .c-play svg {
+  position: relative;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  fill: #fff;
+}
+
+.c-record .c-play:focus-visible,
+.c-record__nav:focus-visible {
+  outline: 2px solid var(--cluster-accent);
+  outline-offset: 3px;
+}
+
+/* --- 2x1 横向唱机 --- */
+.c-record.sz-2x1 .c-record__disc {
+  --disc-size: 168px;
+  left: 24px;
+  top: 21px;
+}
+
+/* 横向 / 微型唱机里 CD 不从面板里出来，不放卡槽，避免像一道黑杠 */
+.c-record.sz-2x1 .c-record__slot,
+.c-record.sz-1x1 .c-record__slot {
+  display: none;
+}
+
+.c-record.sz-2x1 .c-record__body {
+  left: 222px;
+  right: 20px;
+  top: 14px;
+  bottom: 14px;
+}
+
+/* --- 2x2 立式唱机：CD 从面板里探出来 --- */
+.c-record.sz-2x2 .c-record__deck,
+.c-record.sz-1x2 .c-record__deck {
+  z-index: 2;
+}
+
+.c-record.sz-2x2 .c-record__deck {
+  top: 136px;
+  border-radius: 40px;
+}
+
+.c-record.sz-2x2 .c-record__disc {
+  --disc-size: 280px;
+  top: 0;
+  left: 50%;
+  margin-left: -140px;
+  z-index: 1;
+}
+
+.c-record.sz-2x2 .c-record__slot {
+  left: 28px;
+  right: 28px;
+  top: 132px;
+  z-index: 3;
+}
+
+.c-record.sz-2x2 .c-record__body {
+  left: 30px;
+  right: 30px;
+  top: 28px;
+  bottom: 22px;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.c-record.sz-2x2 .c-record__title {
+  font-size: 34px;
+}
+
+.c-record.sz-2x2 .c-record__artist {
+  font-size: 12px;
+}
+
+.c-record.sz-2x2 .c-record__credits {
+  display: block;
+  margin-top: 2px;
+}
+
+.c-record.sz-2x2 .c-credits {
+  justify-content: center;
+}
+
+.c-record.sz-2x2 .c-record__controls {
+  gap: 20px;
+}
+
+.c-record.sz-2x2 .c-play {
+  width: 44px;
+  height: 44px;
+}
+
+.c-record.sz-2x2 .c-play svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- 1x2 立式窄唱机 --- */
+.c-record.sz-1x2 .c-record__deck {
+  top: 120px;
+  border-radius: 32px;
+}
+
+.c-record.sz-1x2 .c-record__disc {
+  --disc-size: 200px;
+  top: 0;
+  left: 50%;
+  margin-left: -100px;
+  z-index: 1;
+}
+
+.c-record.sz-1x2 .c-record__slot {
+  left: 20px;
+  right: 20px;
+  top: 116px;
+  z-index: 3;
+}
+
+.c-record.sz-1x2 .c-record__body {
+  left: 20px;
+  right: 20px;
+  top: 26px;
+  bottom: 18px;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.c-record.sz-1x2 .c-record__title {
+  font-size: 24px;
+}
+
+.c-record.sz-1x2 .c-record__artist {
+  font-size: 11px;
+}
+
+.c-record.sz-1x2 .c-record__controls {
+  gap: 14px;
+}
+
+.c-record.sz-1x2 .c-play {
+  width: 34px;
+  height: 34px;
+}
+
+/* --- 1x1 微型唱机 --- */
+.c-record.sz-1x1 .c-record__deck {
+  border-radius: 24px;
+}
+
+.c-record.sz-1x1 .c-record__disc {
+  --disc-size: 92px;
+  top: 12px;
+  left: 50%;
+  margin-left: -46px;
+}
+
+.c-record.sz-1x1 .c-record__body {
+  left: 14px;
+  right: 14px;
+  top: 112px;
+  bottom: 10px;
+  gap: 4px;
+}
+
+.c-record.sz-1x1 .c-record__eyebrow,
+.c-record.sz-1x1 .c-record__artist,
+.c-record.sz-1x1 .c-record__credits,
+.c-record.sz-1x1 .c-record__nav,
+.c-record.sz-1x1 .c-progress__times {
+  display: none;
+}
+
+.c-record.sz-1x1 .c-record__title {
+  font-size: 15px;
+}
+
+.c-record.sz-1x1 .c-play {
+  width: 30px;
+  height: 30px;
+}
+
+.c-record.sz-1x1 .c-play svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ==========================================================================
+   5. c-story 创作手记
+   --------------------------------------------------------------------------
+   字段
+     .c-story__kicker   主题词
+     .c-story__title    曲名
+     .c-story__quote    引文
+     .c-story__lead     摘要（未展开时）
+     .c-story__full     全文（2×2 时显示，内部滚动）
+     .c-story__expand   展开按钮（2×2 隐藏）
+   说明
+     2×2 就是展开态；点 … 等于把卡片手动拖成 2×2，没有关闭按钮。
+   ========================================================================== */
+.c-story {
+  background: var(--surface-note);
+}
+
+.c-story__inner {
+  height: 100%;
+  padding: 26px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* 展开时内部要滚动，头部不能被 flex 压扁 */
+.c-story__kicker,
+.c-story__title,
+.c-story__quote,
+.c-story__lead,
+.c-story__full {
+  flex: 0 0 auto;
+}
+
+.c-story__kicker {
+  padding-right: 34px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--cluster-accent);
+}
+
+.c-story__title {
+  padding-right: 34px;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-story__quote {
+  font-family: var(--font-serif);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  padding-left: 9px;
+  border-left: 2px solid var(--cluster-accent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.c-story__lead {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 展开全文：未展开时不占位 */
+.c-story__full {
+  display: none;
+}
+
+.c-story__full p {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--text-secondary);
+}
+
+.c-story__full h4 {
+  margin: 16px 0 7px;
+  font-family: var(--font-serif);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.c-story__full .c-credits {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(28, 25, 23, 0.14);
+}
+
+.c-story__expand {
+  position: absolute;
+  top: 32px;
+  right: 16px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(28, 25, 23, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.c-story__expand:hover {
+  border-color: var(--cluster-accent);
+  color: var(--cluster-accent);
+  background: #fff;
+}
+
+/* --- 1x1 只留骨架 --- */
+.c-story.sz-1x1 .c-story__inner {
+  padding: 20px 18px 16px;
+  gap: 4px;
+}
+
+.c-story.sz-1x1 .c-story__title {
+  font-size: 15px;
+}
+
+.c-story.sz-1x1 .c-story__quote {
+  display: none;
+}
+
+.c-story.sz-1x1 .c-story__lead {
+  -webkit-line-clamp: 2;
+}
+
+.c-story.sz-1x1 .c-story__expand {
+  top: 30px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+
+/* --- 1x2 长文 --- */
+.c-story.sz-1x2 .c-story__inner {
+  padding: 28px 20px 20px;
+  gap: 8px;
+}
+
+.c-story.sz-1x2 .c-story__title {
+  font-size: 21px;
+  white-space: normal;
+}
+
+.c-story.sz-1x2 .c-story__quote {
+  font-size: 13.5px;
+  -webkit-line-clamp: 3;
+}
+
+.c-story.sz-1x2 .c-story__lead {
+  font-size: 13px;
+  line-height: 1.8;
+  -webkit-line-clamp: 8;
+}
+
+.c-story.sz-1x2 .c-story__expand {
+  top: 30px;
+  right: 14px;
+}
+
+/* --- 2x2 = 展开态：全文，卡内滚动，没有关闭按钮 --- */
+.c-story.sz-2x2 .c-story__inner {
+  padding: 36px 36px 26px;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 25, 23, 0.22) transparent;
+}
+
+.c-story.sz-2x2 .c-story__inner::-webkit-scrollbar {
+  width: 4px;
+}
+
+.c-story.sz-2x2 .c-story__inner::-webkit-scrollbar-thumb {
+  background: rgba(28, 25, 23, 0.2);
+  border-radius: 2px;
+}
+
+.c-story.sz-2x2 .c-story__kicker,
+.c-story.sz-2x2 .c-story__title {
+  padding-right: 0;
+}
+
+.c-story.sz-2x2 .c-story__title {
+  font-size: 30px;
+}
+
+.c-story.sz-2x2 .c-story__quote {
+  font-size: 15px;
+  -webkit-line-clamp: 3;
+}
+
+.c-story.sz-2x2 .c-story__lead {
+  display: none;
+}
+
+.c-story.sz-2x2 .c-story__full {
+  display: block;
+}
+
+.c-story.sz-2x2 .c-story__expand {
+  display: none;
+}
+
+/* ==========================================================================
+   6. c-visual 四周年插画
+   --------------------------------------------------------------------------
+   字段
+     .c-visual__art      图片（img）
+     .c-visual__glow     音频能量光晕
+     .c-visual__badge    正在播放徽标
+     .c-caption          底部题注（.c-caption__title）
+   ========================================================================== */
+.c-visual {
+  background: #14121A;
+}
+
+.c-visual__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 55%;
+  display: block;
+  will-change: transform;
+}
+
+.c-visual__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(85% 70% at 50% 90%, var(--cluster-soft), transparent 72%);
+  opacity: calc(0.55 + var(--cluster-energy, 0) * 0.9);
+  mix-blend-mode: screen;
+}
+
+.c-visual__badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(20, 17, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #F8F2F5;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.c-visual__badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cluster-accent);
+  box-shadow: 0 0 8px var(--cluster-accent);
+}
+
+.c-card.is-active-cluster.is-playing .c-visual__badge {
+  opacity: 1;
+}
+
+.c-card.is-active-cluster.is-playing .c-visual__art {
+  animation: c-visual-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes c-visual-drift {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.09) translate3d(-1.4%, -1.1%, 0);
+  }
+}
+
+/* --- 1x1 紧凑题注 --- */
+.c-visual.sz-1x1 .c-caption {
+  padding: 18px 12px 10px;
+}
+
+.c-visual.sz-1x1 .c-caption__title {
+  font-size: 11px;
+}
+
+.c-visual.sz-1x1 .c-visual__badge {
+  top: 10px;
+  left: 10px;
+  padding: 3px 8px;
+  font-size: 9px;
+}
+
+/* --- 1x2 立式裁切 --- */
+.c-visual.sz-1x2 .c-visual__art {
+  object-position: 50% 50%;
+}
+
+.c-visual.sz-1x2 .c-caption {
+  padding: 30px 16px 14px;
+}
+
+.c-visual.sz-1x2 .c-caption__title {
+  font-size: 13px;
+}
+
+/* --- 2x1 宽幅 --- */
+.c-visual.sz-2x1 .c-visual__art {
+  object-position: 50% 58%;
+}
+
+.c-visual.sz-2x1 .c-caption {
+  padding: 26px 18px 12px;
+}
+
+/* --- 2x2 展开题注 --- */
+.c-visual.sz-2x2 .c-caption {
+  padding: 34px 22px 18px;
+}
+
+.c-visual.sz-2x2 .c-caption__title {
+  font-size: 16px;
+}
+
+/* ==========================================================================
+   7. c-lyrics 歌词
+   --------------------------------------------------------------------------
+   字段
+     .c-lyrics__scroll         歌词滚动区
+     .c-lyrics__line           单行（.is-active 当前句）
+   ========================================================================== */
+.c-lyrics {
+  background: var(--surface-paper);
+  padding: 24px 22px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.c-lyrics__scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 28px 4px;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+}
+
+.c-lyrics__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.c-lyrics__line {
+  padding: 8px 14px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.c-lyrics__line:hover {
+  color: var(--text-primary);
+  background: var(--cluster-soft);
+}
+
+.c-lyrics__line.is-active {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 18.5px;
+  background: var(--cluster-soft);
+  box-shadow: 0 2px 10px var(--cluster-soft);
+  transform: translateX(4px);
+}
+
+/* --- 1x1 多行歌词：比 2x1 稍大，当前句用荧光笔高亮 --- */
+.c-lyrics.sz-1x1 {
+  padding: 20px 18px;
+}
+
+.c-lyrics.sz-1x1 .c-lyrics__scroll {
+  padding: 12px 2px;
+}
+
+.c-lyrics.sz-1x1 .c-lyrics__line {
+  font-size: 15px;
+  padding: 4px 8px;
+  margin-bottom: 2px;
+}
+
+.c-lyrics.sz-1x1 .c-lyrics__line.is-active {
+  font-size: 17px;
+  padding: 4px 8px;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  border-radius: 0;
+}
+
+/* 只给文字本身画荧光笔，和旧 1x1 聚光的观感一致 */
+.c-lyrics.sz-1x1 .c-lyrics__line.is-active .c-lyrics__text {
+  background: linear-gradient(transparent 62%, var(--cluster-soft) 62%);
+}
+
+/* --- 1x2 窄栏 --- */
+.c-lyrics.sz-1x2 {
+  padding: 22px 14px 18px;
+}
+
+.c-lyrics.sz-1x2 .c-lyrics__scroll {
+  padding: 22px 0;
+}
+
+.c-lyrics.sz-1x2 .c-lyrics__line {
+  font-size: 13.5px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.c-lyrics.sz-1x2 .c-lyrics__line.is-active {
+  font-size: 15.5px;
+}
+
+/* --- 2x1 横向短栏 --- */
+.c-lyrics.sz-2x1 {
+  padding: 16px 20px 14px;
+}
+
+.c-lyrics.sz-2x1 .c-lyrics__scroll {
+  padding: 14px 2px;
+}
+
+.c-lyrics.sz-2x1 .c-lyrics__line {
+  font-size: 14px;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+}
+
+.c-lyrics.sz-2x1 .c-lyrics__line.is-active {
+  font-size: 16px;
+}
+
+/* --- 2x2 标准 --- */
+.c-lyrics.sz-2x2 .c-lyrics__scroll {
+  padding: 30px 6px;
+}
+
+/* ==========================================================================
+   8. c-marker 章节牌（固定 2×1）
+   --------------------------------------------------------------------------
+   数字 + 标题，固定占 2×1；无卡片背景、不填满，内容靠下对齐，
+   在 demo 里可拖动、点击飞往所属曲目。
+   字段
+     .c-marker__no     序号（01）
+     .c-marker__title  曲名（长曲名加 .is-long）
+   可变样式
+     --cluster-accent  序号、主题词
+     --cluster-soft    不参与背景（保持透明）
+   ========================================================================== */
+.c-marker {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* 章节牌不是“卡”，激活时也不要描边 */
+.c-marker.is-active-cluster {
+  border: none;
+  box-shadow: none;
+}
+
+.c-marker__inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 0 0 4px 2px;
+  cursor: pointer;
+}
+
+.c-marker__line {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
+}
+
+.c-marker__no {
+  font-family: var(--font-serif);
+  font-size: 96px;
+  font-weight: 700;
+  line-height: 0.78;
+  letter-spacing: -0.04em;
+  color: var(--cluster-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.c-marker__title {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  /* 章节牌没有卡片背景，直接放在深色画布上，所以用浅色字 */
+  color: #F4F0EC;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-marker__title.is-long {
+  font-size: 26px;
+  letter-spacing: 0.03em;
+}
+
+/* 章节牌没有可见卡片，拖拽区盖住底部的内容，视觉上“抓着标题就能拖” */
+.c-marker .drag-handle-zone {
+  top: auto;
+  bottom: 0;
+  height: 108px;
+}
+
+.c-marker .drag-pill {
+  display: none;
+}
+
+/* ==========================================================================
+   9. Reduced Motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .c-card.is-active-cluster.is-playing .c-visual__art {
+    animation: none;
+  }
+
+  .c-lyrics__line,
+  .c-card,
+  .c-play {
+    transition: none;
+  }
+}

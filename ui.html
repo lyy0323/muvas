@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>和诗以歌 UI 组件库</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231C1917'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23F4F0EC'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%231C1917'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="components.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 88px;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(rgba(28, 25, 23, 0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    a { color: inherit; }
+
+    .ui-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding: 12px 28px;
+      background: rgba(248, 242, 245, 0.86);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .ui-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .ui-brand span {
+      font-family: var(--font-sans);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    .ui-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ui-nav a {
+      padding: 6px 11px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .ui-nav a:hover {
+      background: var(--accent-soft);
+      color: var(--text-primary);
+    }
+
+    .ui-nav .ui-demo-link {
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .ui-main {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 0 28px 120px;
+    }
+
+    .ui-hero {
+      padding: 72px 0 40px;
+    }
+
+    .ui-kicker {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .ui-hero h1 {
+      margin-top: 14px;
+      font-family: var(--font-serif);
+      font-size: clamp(34px, 5vw, 52px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+    }
+
+    .ui-lede {
+      max-width: 760px;
+      margin-top: 20px;
+      font-size: 14.5px;
+      line-height: 1.95;
+      color: var(--text-secondary);
+    }
+
+    .ui-lede em {
+      font-style: normal;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .ui-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .ui-chip {
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.66);
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.03em;
+    }
+
+    .ui-section {
+      padding-top: 60px;
+      margin-top: 56px;
+      border-top: 1px solid rgba(28, 25, 23, 0.1);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .section-head h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 700;
+    }
+
+    .section-head .tag {
+      font-size: 10.5px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .section-desc {
+      max-width: 760px;
+      margin-top: 12px;
+      font-size: 13.5px;
+      line-height: 1.9;
+      color: var(--text-secondary);
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 36px;
+      margin: 26px 0 30px;
+    }
+
+    .doc-block h3 {
+      margin-bottom: 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    .doc-table th,
+    .doc-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.6;
+    }
+
+    .doc-table th {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .doc-table td:first-child {
+      white-space: nowrap;
+    }
+
+    .doc-table code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(221, 212, 237, 0.32);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: #6B4C5A;
+    }
+
+    .size-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .size-list span {
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .specimen-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 8px 2px 18px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .specimen-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .specimen {
+      flex: 0 0 auto;
+    }
+
+    .spec-label {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+
+    .spec-label b {
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .spec-dim {
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      color: #A89D98;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .specimen .c-card {
+      box-shadow: var(--shadow-card);
+    }
+
+    .spec-1x1 .c-card { width: 283px; height: 210px; }
+    .spec-1x2 .c-card { width: 283px; height: 436px; }
+    .spec-2x1 .c-card { width: 582px; height: 210px; }
+    .spec-2x2 .c-card { width: 582px; height: 436px; }
+
+    .code-block {
+      margin-top: 26px;
+      padding: 16px 18px;
+      border-radius: 12px;
+      background: #211C22;
+      color: #F3EDF5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11.5px;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .code-block .tok-tag { color: #E8C6D8; }
+    .code-block .tok-attr { color: #C8D9B6; }
+    .code-block .tok-str { color: #F0D6A8; }
+
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .swatch {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .swatch i {
+      display: block;
+      height: 42px;
+      border-radius: 6px;
+      border: 1px solid rgba(28, 25, 23, 0.06);
+      margin-bottom: 8px;
+    }
+
+    .swatch b {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .swatch span {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .accent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .accent {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .accent i {
+      display: block;
+      height: 6px;
+      border-radius: 99px;
+      margin-bottom: 8px;
+    }
+
+    .accent b {
+      font-family: var(--font-serif);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .accent span {
+      display: block;
+      margin-top: 1px;
+      font-size: 9.5px;
+      color: var(--text-muted);
+    }
+
+    .ui-footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(28, 25, 23, 0.1);
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .ui-footer a { text-decoration: none; border-bottom: 1px solid currentColor; }
+
+    @media (max-width: 900px) {
+      .doc-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .ui-main { padding: 0 18px 90px; }
+    }
+
+    @media (max-width: 640px) {
+      html { scroll-padding-top: 200px; }
+      .ui-header { padding: 10px 14px; }
+      .ui-nav a { padding: 5px 8px; font-size: 11px; }
+      .ui-hero { padding: 48px 0 28px; }
+      .specimen-row { gap: 18px; }
+    }
+
+    /* ==========================================================================
+       Dark documentation theme（组件卡片仍是浅色，页面壳层转深色）
+       ========================================================================== */
+    :root {
+      --ui-bg: #333333;
+      --ui-text: #F4F0EC;
+      --ui-text-secondary: rgba(244, 240, 236, 0.7);
+      --ui-muted: rgba(244, 240, 236, 0.46);
+      --ui-line: rgba(255, 255, 255, 0.12);
+      --ui-panel: rgba(255, 255, 255, 0.05);
+      --ui-panel-strong: rgba(255, 255, 255, 0.09);
+      --theme-accent: #A8452C;
+      --theme-accent-soft: rgba(168, 69, 44, 0.18);
+    }
+
+    body {
+      background-color: var(--ui-bg);
+      color: var(--ui-text);
+      background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    }
+
+    .ui-header {
+      background: rgba(38, 38, 38, 0.82);
+      border-bottom-color: var(--ui-line);
+      box-shadow: 0 12px 30px -22px rgba(0, 0, 0, 0.8);
+    }
+
+    .ui-brand { color: var(--ui-text); }
+    .ui-brand span { color: var(--ui-muted); }
+    .ui-nav a { color: var(--ui-text-secondary); }
+    .ui-nav a:hover { background: var(--theme-accent-soft); color: var(--ui-text); }
+    .ui-nav .ui-demo-link {
+      color: var(--ui-text);
+      border-color: var(--ui-line);
+      background: var(--ui-panel);
+    }
+
+    .ui-kicker { color: var(--ui-muted); }
+    .ui-hero h1 { color: var(--ui-text); }
+    .ui-lede { color: var(--ui-text-secondary); }
+    .ui-lede em { color: var(--ui-text); }
+    .ui-lede code,
+    .section-desc code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--ui-panel-strong);
+      color: #F0D6A8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.92em;
+    }
+    .ui-chip {
+      background: var(--ui-panel);
+      border-color: var(--ui-line);
+      color: var(--ui-text-secondary);
+    }
+
+    .ui-section { border-top-color: var(--ui-line); }
+    .section-head h2 { color: var(--ui-text); }
+    .section-head .tag { color: var(--ui-muted); }
+    .section-desc { color: var(--ui-text-secondary); }
+
+    .doc-block h3 { color: var(--ui-muted); }
+    .doc-table th,
+    .doc-table td { border-bottom-color: var(--ui-line); color: var(--ui-text); }
+    .doc-table th { color: var(--ui-muted); }
+    .doc-table code {
+      background: var(--ui-panel-strong);
+      color: #F3E3D8;
+    }
+
+    .size-list span {
+      background: var(--ui-panel);
+      border-color: var(--ui-line);
+      color: var(--ui-text-secondary);
+    }
+
+    .spec-label b { color: var(--ui-text); }
+    .spec-dim { color: var(--ui-muted); }
+    .specimen .c-card {
+      box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.75);
+    }
+
+    .specimen .c-marker,
+    .specimen .c-record {
+      box-shadow: none;
+    }
+
+    .swatch,
+    .accent {
+      background: var(--ui-panel);
+      border-color: var(--ui-line);
+    }
+    .swatch b,
+    .accent b { color: var(--ui-text); }
+    .swatch span,
+    .accent span { color: var(--ui-muted); }
+
+    .code-block {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #262226;
+    }
+
+    .ui-footer {
+      border-top-color: var(--ui-line);
+      color: var(--ui-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="ui-header">
+    <div class="ui-brand">和诗以歌 <span>UI COMPONENTS</span></div>
+    <nav class="ui-nav">
+      <a href="#tokens">色彩</a>
+      <a href="#sizes">尺寸</a>
+      <a href="#marker">章节</a>
+      <a href="#record">唱片</a>
+      <a href="#story">手记</a>
+      <a href="#visual">插画</a>
+      <a href="#lyrics">歌词</a>
+      <a class="ui-demo-link" href="demo.html">打开 demo ↗</a>
+    </nav>
+  </header>
+
+  <main class="ui-main">
+    <section class="ui-hero">
+      <div class="ui-kicker">Component Library v1</div>
+      <h1>四张卡片，<br />一枚章节牌。</h1>
+      <p class="ui-lede">
+        这一页把 <em>demo</em> 拆成五个组件：唱片、手记、插画、歌词四张卡片各四档版式；
+        数字 + 标题是一枚固定 <em>2×1</em> 的章节牌，透明、不填满、内容靠下，拖动它就能单独摆放。
+        内容字段与可变样式都写在 <em>components.css</em> 里，尺寸类只负责内部版式重排。
+      </p>
+      <div class="ui-meta">
+        <span class="ui-chip">5 components</span>
+        <span class="ui-chip">4 sizes per card</span>
+        <span class="ui-chip">marker fixed 2×1</span>
+        <span class="ui-chip">BEM fields + CSS vars</span>
+        <span class="ui-chip">2 states</span>
+      </div>
+    </section>
+
+    <section class="ui-section" id="tokens">
+      <div class="section-head">
+        <h2>色彩与字体</h2>
+        <span class="tag">Design tokens</span>
+      </div>
+      <p class="section-desc">
+        画布是 <code>#333333</code>，卡片仍是纸面色。每首歌必须指定一个主题色，组件只读取
+        <code>--cluster-accent</code> / <code>--cluster-soft</code>，没有全局紫色兜底；
+        页头、面板等页面壳层读 <code>--theme-accent</code> / <code>--theme-accent-soft</code>，由当前曲目决定。
+      </p>
+      <div class="token-grid">
+        <div class="swatch"><i style="background:#333333"></i><b>画布</b><span>--bg-canvas #333333</span></div>
+        <div class="swatch"><i style="background:#FFFFFF"></i><b>卡片</b><span>--surface-card #FFFFFF</span></div>
+        <div class="swatch"><i style="background:#FCF9F5"></i><b>纸面</b><span>--surface-paper #FCF9F5</span></div>
+        <div class="swatch"><i style="background:#FDFBF7"></i><b>手记</b><span>--surface-note #FDFBF7</span></div>
+        <div class="swatch"><i style="background:#1C1917"></i><b>卡片正文</b><span>--text-primary #1C1917</span></div>
+        <div class="swatch"><i style="background:#8A817C"></i><b>弱化</b><span>--text-muted #8A817C</span></div>
+        <div class="swatch"><i style="background:#F4F0EC"></i><b>页面文字</b><span>--ui-text #F4F0EC</span></div>
+        <div class="swatch"><i style="background:linear-gradient(90deg,#A8452C,#4F6480,#8A5A79,#5F7A63,#9A7838,#B0756F)"></i><b>主题色</b><span>--theme-accent 每首歌指定</span></div>
+      </div>
+      <div class="accent-grid">
+        <div class="accent"><i style="background:#A8452C"></i><b>大东</b><span>#A8452C 悲歌</span></div>
+        <div class="accent"><i style="background:#4F6480"></i><b>未解忆长安</b><span>#4F6480 音韵</span></div>
+        <div class="accent"><i style="background:#8A5A79"></i><b>来春可拟共兰舟</b><span>#8A5A79 约定</span></div>
+        <div class="accent"><i style="background:#5F7A63"></i><b>溯流沙</b><span>#5F7A63 匠心</span></div>
+        <div class="accent"><i style="background:#9A7838"></i><b>玉蝴蝶 秋梦</b><span>#9A7838 旧梦</span></div>
+        <div class="accent"><i style="background:#B0756F"></i><b>聚少趁江南</b><span>#B0756F 联结</span></div>
+      </div>
+      <p class="section-desc" style="margin-top:18px">
+        字体：<code>--font-serif</code>（Noto Serif SC）负责曲名、引文、歌词；<code>--font-sans</code>（Noto Sans SC）负责说明、界面。
+      </p>
+    </section>
+
+    <section class="ui-section" id="sizes">
+      <div class="section-head">
+        <h2>尺寸</h2>
+        <span class="tag">Grid 4 columns</span>
+      </div>
+      <p class="section-desc">
+        卡片按 1180px / 4 列 / 16px 间距的网格出图，1×1 与 1×2 同宽 283px，2×1 与 2×2 同宽 582px；
+        高度只有 210px 与 436px 两档。demo 的画布用同样的数值，所以组件在两处看起来一致。
+      </p>
+      <div class="size-list">
+        <span>1×1 283 × 210</span>
+        <span>1×2 283 × 436</span>
+        <span>2×1 582 × 210</span>
+        <span>2×2 582 × 436</span>
+      </div>
+      <p class="section-desc" style="margin-top:12px">
+        章节牌固定 <code>2×1</code>（582 × 210），不参与四档缩放；它没有卡片背景，内容靠下。
+      </p>
+    </section>
+
+
+    <section class="ui-section" id="marker">
+      <div class="section-head">
+        <h2>c-marker 章节牌</h2>
+        <span class="tag">Fixed 2×1 draggable</span>
+      </div>
+      <p class="section-desc">
+        数字 + 标题，没有第三行小字。固定占 2×1，没有卡片背景、也不填满，内容自然靠下；
+        在 demo 里可以拖动，轻点会飞往所属曲目，颜色继承当前歌曲的主题色。
+      </p>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3>内容字段</h3>
+          <table class="doc-table">
+            <thead><tr><th>字段</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>c-marker__no</code></td><td>序号，01–06</td></tr>
+              <tr><td><code>c-marker__title</code></td><td>曲名，长曲名加 <code>is-long</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-block">
+          <h3>可变样式与状态</h3>
+          <table class="doc-table">
+            <thead><tr><th>变量 / 规则</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>--cluster-accent</code></td><td>序号、主题词</td></tr>
+              <tr><td><code>2×1</code></td><td>固定尺寸，无尺寸变体</td></tr>
+              <tr><td><code>.c-marker__inner</code></td><td>透明、不填满、内容靠下</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="specimen-row">
+        <div class="specimen spec-2x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+          <div class="spec-label"><b>2 × 1</b><span class="spec-dim">582 × 210 透明 / 内容靠下</span></div>
+          <article class="c-card c-marker sz-2x1">
+            <div class="c-marker__inner">
+              <div class="c-marker__line">
+                <span class="c-marker__no">01</span>
+                <span class="c-marker__title">大东</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+      <p class="section-desc" style="margin-top:10px">
+        拖拽区盖住底部内容：轻点飞往曲目，长按拖动章节牌。
+      </p>
+    </section>
+
+    <section class="ui-section" id="record">
+      <div class="section-head">
+        <h2>c-record 唱机</h2>
+        <span class="tag">Slot deck / CD</span>
+      </div>
+      <p class="section-desc">
+        来自 slot-cd.html：CD 从卡槽里探出来，播放时旋转；暂停时播放键是彩虹圆盘。
+        1×2 是画布上的标准唱机；2×1 是横向版；2×2 是立式 hero；1×1 是微型，只留 CD、曲名、细进度和播放。
+      </p>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3>内容字段</h3>
+          <table class="doc-table">
+            <thead><tr><th>字段</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>c-record__deck</code></td><td>唱机面板</td></tr>
+            <tr><td><code>c-record__disc</code></td><td>CD 容器；<code>__disc-spin</code> 旋转，label 固定</td></tr>
+            <tr><td><code>c-record__slot</code></td><td>CD 卡槽，仅 2×2 / 1×2 显示</td></tr>
+            <tr><td><code>c-record__eyebrow</code></td><td>EQ + 状态文字</td></tr>
+            <tr><td><code>c-record__title</code></td><td>曲名</td></tr>
+            <tr><td><code>c-record__artist</code></td><td>词曲 / 演唱署名</td></tr>
+            <tr><td><code>c-record__credits</code></td><td>制作名单，仅 2×2 显示，内部是 c-credits</td></tr>
+            <tr><td><code>c-progress</code></td><td>进度条 + 已播 / 剩余</td></tr>
+            <tr><td><code>c-record__controls</code></td><td>上一首 / 播放 / 下一首</td></tr>
+            <tr><td><code>data-role="disc|play|seek|time|remaining|prev|next"</code></td><td>demo 的播放状态钩子</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-block">
+          <h3>可变样式与状态</h3>
+          <table class="doc-table">
+            <thead><tr><th>变量 / 状态</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>--cluster-accent</code></td><td>EQ 条、激活描边</td></tr>
+            <tr><td><code>--cluster-soft</code></td><td>激活描边外圈</td></tr>
+            <tr><td><code>--p</code></td><td>进度填充百分比，由 demo 写入</td></tr>
+            <tr><td><code>.is-active-cluster</code></td><td>当前曲目组，面板描边强调色</td></tr>
+            <tr><td><code>.is-playing</code></td><td>EQ 动、CD 转、彩虹播放键淡出、图标切暂停</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="specimen-row">
+      <div class="specimen spec-1x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 1</b><span class="spec-dim">283 × 210</span></div>
+        <article class="c-card c-record sz-1x1">
+  <div class="c-record__deck">
+    <div class="c-record__body">
+      <div class="c-record__eyebrow">
+        <span class="c-record__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>NOW SPINNING</span>
+      </div>
+      <h3 class="c-record__title">大东</h3>
+      <div class="c-record__artist">林雨夜 / 木狸奴</div>
+      <div class="c-record__credits"><div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div></div>
+      <div class="c-progress">
+        <input class="c-progress__range" type="range" min="0" max="253.1" step="0.1" value="101" style="--p:39.9%" aria-label="播放进度" />
+        <div class="c-progress__times"><span>1:41</span><span>2:32</span></div>
+      </div>
+      <div class="c-record__controls">
+        <button class="c-record__nav" type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.4v14H6zM20 5v14L9.4 12z"/></svg></button>
+        <button class="c-play" type="button" aria-label="播放或暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="c-record__nav" type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5h-2.4v14H18zM4 5v14l10.6-7z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="c-record__slot" aria-hidden="true"></div>
+  <div class="c-record__disc">
+    <div class="c-record__disc-spin">
+      <div class="c-record__disc-art" style="background-image:url('assets/img/stories/dadong.jpg')"></div>
+      <div class="c-record__disc-grooves" aria-hidden="true"></div>
+      <div class="c-record__disc-irid" aria-hidden="true"></div>
+    </div>
+    <div class="c-record__disc-label" aria-hidden="true"><div class="c-record__disc-ring"><div class="c-record__disc-hole"></div></div></div>
+    <div class="c-record__disc-sheen" aria-hidden="true"></div>
+    <div class="c-record__disc-rim" aria-hidden="true"></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-1x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 2</b><span class="spec-dim">283 × 436</span></div>
+        <article class="c-card c-record sz-1x2">
+  <div class="c-record__deck">
+    <div class="c-record__body">
+      <div class="c-record__eyebrow">
+        <span class="c-record__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>NOW SPINNING</span>
+      </div>
+      <h3 class="c-record__title">大东</h3>
+      <div class="c-record__artist">林雨夜 / 木狸奴</div>
+      <div class="c-record__credits"><div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div></div>
+      <div class="c-progress">
+        <input class="c-progress__range" type="range" min="0" max="253.1" step="0.1" value="101" style="--p:39.9%" aria-label="播放进度" />
+        <div class="c-progress__times"><span>1:41</span><span>2:32</span></div>
+      </div>
+      <div class="c-record__controls">
+        <button class="c-record__nav" type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.4v14H6zM20 5v14L9.4 12z"/></svg></button>
+        <button class="c-play" type="button" aria-label="播放或暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="c-record__nav" type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5h-2.4v14H18zM4 5v14l10.6-7z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="c-record__slot" aria-hidden="true"></div>
+  <div class="c-record__disc">
+    <div class="c-record__disc-spin">
+      <div class="c-record__disc-art" style="background-image:url('assets/img/stories/dadong.jpg')"></div>
+      <div class="c-record__disc-grooves" aria-hidden="true"></div>
+      <div class="c-record__disc-irid" aria-hidden="true"></div>
+    </div>
+    <div class="c-record__disc-label" aria-hidden="true"><div class="c-record__disc-ring"><div class="c-record__disc-hole"></div></div></div>
+    <div class="c-record__disc-sheen" aria-hidden="true"></div>
+    <div class="c-record__disc-rim" aria-hidden="true"></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 1</b><span class="spec-dim">582 × 210</span></div>
+        <article class="c-card c-record sz-2x1">
+  <div class="c-record__deck">
+    <div class="c-record__body">
+      <div class="c-record__eyebrow">
+        <span class="c-record__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>NOW SPINNING</span>
+      </div>
+      <h3 class="c-record__title">大东</h3>
+      <div class="c-record__artist">林雨夜 / 木狸奴</div>
+      <div class="c-record__credits"><div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div></div>
+      <div class="c-progress">
+        <input class="c-progress__range" type="range" min="0" max="253.1" step="0.1" value="101" style="--p:39.9%" aria-label="播放进度" />
+        <div class="c-progress__times"><span>1:41</span><span>2:32</span></div>
+      </div>
+      <div class="c-record__controls">
+        <button class="c-record__nav" type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.4v14H6zM20 5v14L9.4 12z"/></svg></button>
+        <button class="c-play" type="button" aria-label="播放或暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="c-record__nav" type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5h-2.4v14H18zM4 5v14l10.6-7z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="c-record__slot" aria-hidden="true"></div>
+  <div class="c-record__disc">
+    <div class="c-record__disc-spin">
+      <div class="c-record__disc-art" style="background-image:url('assets/img/stories/dadong.jpg')"></div>
+      <div class="c-record__disc-grooves" aria-hidden="true"></div>
+      <div class="c-record__disc-irid" aria-hidden="true"></div>
+    </div>
+    <div class="c-record__disc-label" aria-hidden="true"><div class="c-record__disc-ring"><div class="c-record__disc-hole"></div></div></div>
+    <div class="c-record__disc-sheen" aria-hidden="true"></div>
+    <div class="c-record__disc-rim" aria-hidden="true"></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 2</b><span class="spec-dim">582 × 436</span></div>
+        <article class="c-card c-record sz-2x2 is-active-cluster">
+  <div class="c-record__deck">
+    <div class="c-record__body">
+      <div class="c-record__eyebrow">
+        <span class="c-record__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>NOW SPINNING</span>
+      </div>
+      <h3 class="c-record__title">大东</h3>
+      <div class="c-record__artist">林雨夜 / 木狸奴</div>
+      <div class="c-record__credits"><div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div></div>
+      <div class="c-progress">
+        <input class="c-progress__range" type="range" min="0" max="253.1" step="0.1" value="101" style="--p:39.9%" aria-label="播放进度" />
+        <div class="c-progress__times"><span>1:41</span><span>2:32</span></div>
+      </div>
+      <div class="c-record__controls">
+        <button class="c-record__nav" type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.4v14H6zM20 5v14L9.4 12z"/></svg></button>
+        <button class="c-play" type="button" aria-label="播放或暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="c-record__nav" type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5h-2.4v14H18zM4 5v14l10.6-7z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="c-record__slot" aria-hidden="true"></div>
+  <div class="c-record__disc">
+    <div class="c-record__disc-spin">
+      <div class="c-record__disc-art" style="background-image:url('assets/img/stories/dadong.jpg')"></div>
+      <div class="c-record__disc-grooves" aria-hidden="true"></div>
+      <div class="c-record__disc-irid" aria-hidden="true"></div>
+    </div>
+    <div class="c-record__disc-label" aria-hidden="true"><div class="c-record__disc-ring"><div class="c-record__disc-hole"></div></div></div>
+    <div class="c-record__disc-sheen" aria-hidden="true"></div>
+    <div class="c-record__disc-rim" aria-hidden="true"></div>
+  </div>
+</article>
+      </div>
+      </div>
+    </section>
+
+    <section class="ui-section" id="story">
+      <div class="section-head">
+        <h2>c-story 创作手记</h2>
+        <span class="tag">Editorial note</span>
+      </div>
+      <p class="section-desc">
+        纸面 + 和纸胶带。1×1 只保留主题词、曲名和摘要；其余尺寸显示引文与更长摘要。
+        点右上角的 … 直接把卡片变成 2×2，等同手动拖成 2×2：下方卡片让位，镜头不动，
+        2×2 就是展开态，没有关闭按钮，全文在卡片内部滚动。
+      </p>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3>内容字段</h3>
+          <table class="doc-table">
+            <thead><tr><th>字段</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>c-story__kicker</code></td><td>主题词，如“悲歌”</td></tr>
+            <tr><td><code>c-story__title</code></td><td>曲名</td></tr>
+            <tr><td><code>c-story__quote</code></td><td>引文，左侧强调色竖线</td></tr>
+            <tr><td><code>c-story__lead</code></td><td>故事摘要，按尺寸截断 2–6 行</td></tr>
+            <tr><td><code>c-story__full</code></td><td>全文，2×2 时显示</td></tr>
+            <tr><td><code>c-credits</code></td><td>制作名单，字段 badge + 值 plaintext</td></tr>
+            <tr><td><code>c-story__expand</code></td><td>仅 1×1 / 1×2 / 2×1 显示的 … 按钮</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-block">
+          <h3>可变样式与状态</h3>
+          <table class="doc-table">
+            <thead><tr><th>变量 / 状态</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>--cluster-accent</code></td><td>主题词、引文竖线、展开按钮</td></tr>
+            <tr><td><code>--cluster-soft</code></td><td>激活描边外圈</td></tr>
+            <tr><td><code>.is-active-cluster</code></td><td>当前曲目组</td></tr>
+            <tr><td><code>2×2</code></td><td>展开态：下方卡片下移，全文在卡内滚动</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="specimen-row">
+      <div class="specimen spec-1x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 1</b><span class="spec-dim">283 × 210</span></div>
+        <article class="c-card c-story sz-1x1 paper-grain">
+  <div class="c-tape" aria-hidden="true"></div>
+  <button class="c-story__expand" type="button" aria-label="展开创作手记">…</button>
+  <div class="c-story__inner">
+    <div class="c-story__kicker">悲歌</div>
+    <h3 class="c-story__title">大东</h3>
+    <blockquote class="c-story__quote">“维天有汉，监亦有光”</blockquote>
+    <p class="c-story__lead">“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。 故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-1x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 2</b><span class="spec-dim">283 × 436</span></div>
+        <article class="c-card c-story sz-1x2 paper-grain">
+  <div class="c-tape" aria-hidden="true"></div>
+  <button class="c-story__expand" type="button" aria-label="展开创作手记">…</button>
+  <div class="c-story__inner">
+    <div class="c-story__kicker">悲歌</div>
+    <h3 class="c-story__title">大东</h3>
+    <blockquote class="c-story__quote">“维天有汉，监亦有光”</blockquote>
+    <p class="c-story__lead">“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。 故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 1</b><span class="spec-dim">582 × 210</span></div>
+        <article class="c-card c-story sz-2x1 paper-grain">
+  <div class="c-tape" aria-hidden="true"></div>
+  <button class="c-story__expand" type="button" aria-label="展开创作手记">…</button>
+  <div class="c-story__inner">
+    <div class="c-story__kicker">悲歌</div>
+    <h3 class="c-story__title">大东</h3>
+    <blockquote class="c-story__quote">“维天有汉，监亦有光”</blockquote>
+    <p class="c-story__lead">“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。 故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 2</b><span class="spec-dim">582 × 436</span></div>
+        <article class="c-card c-story sz-2x2 paper-grain is-active-cluster is-playing">
+  <div class="c-tape" aria-hidden="true"></div>
+  <div class="c-story__inner">
+    <div class="c-story__kicker">悲歌</div>
+    <h3 class="c-story__title">大东</h3>
+    <blockquote class="c-story__quote">“维天有汉，监亦有光”</blockquote>
+    <p class="c-story__lead">“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。 故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+    <div class="c-story__full">
+      <p>“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。</p>
+      <h4>若合一契的悲歌</h4>
+      <p>故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+      <p>这是三千年前殷商遗民的歌谣：天上的银河灿烂，地上的征役无休；贵族享乐，百姓赤贫。这种跨越时空的苦闷，让木猫瞬间产生了一种“若合一契”的战栗——他仿佛听懂了那些仰望星空的古人。</p>
+      <h4>灵感与格律的交响</h4>
+      <p>《大东》的原诗结构奇特，前四段沉郁质实，后三段却瑰丽奇崛，仿佛是由两篇不同的作品拼接而成。创作的过程也呼应了这种结构。</p>
+      <p>在那次灵感迸发的洗澡间隙，木猫脑海中突然闪过黄霑《沧海一声笑》的豪迈，决定用宫商角徵羽的五声音阶起头，一气呵成谱写了后半段的高潮——既不可张扬宏大，也不能流于琐碎，那是压抑后的爆发。</p>
+      <p>而前半段的叙事，则由林雨夜（椰椰）深度参与。她用国学社一贯坚持的“依字行腔”原则，对旋律进行了精细的打磨与调整，弥补了原本音准上的瑕疵，让古老的文字在现代的律动中找到了最准确的咬字与呼吸。</p>
+      <h4>四点半的绝响</h4>
+      <p>那是一个疯狂的夜晚。两位创作者，一间小房间，床与钢琴，凌晨四点半。“用情绪的花火拼凑出曲调”，木猫说，即便后来远渡重洋，拥有了更好的独立空间，他也再没能复刻那一晚纯粹的无拘表达。</p>
+      <p>《大东》不仅是一首复古之作，它更像是一个现代灵魂与古老历史的握手。闭上眼睛，你似乎能听到那来自东方的歌谣：他们痛苦，他们悲歌，但他们依然在星空下，顶天立地地活着。</p>
+      <div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div>
+    </div>
+  </div>
+</article>
+      </div>
+      </div>
+    </section>
+
+    <section class="ui-section" id="visual">
+      <div class="section-head">
+        <h2>c-visual 四周年插画</h2>
+        <span class="tag">Image / motion</span>
+      </div>
+      <p class="section-desc">
+        插画本身 + 底部题注 + 播放时的光晕与缓慢推镜。四种尺寸只是裁切与题注位置的变化。
+      </p>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3>内容字段</h3>
+          <table class="doc-table">
+            <thead><tr><th>字段</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>c-visual__art</code></td><td>插画（img，object-fit: cover）</td></tr>
+            <tr><td><code>c-visual__glow</code></td><td>音频能量光晕，读 --cluster-soft</td></tr>
+            <tr><td><code>c-visual__badge</code></td><td>“正在播放”徽标</td></tr>
+            <tr><td><code>c-caption__title</code></td><td>题注（曲名）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-block">
+          <h3>可变样式与状态</h3>
+          <table class="doc-table">
+            <thead><tr><th>变量 / 状态</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>--cluster-soft</code></td><td>光晕颜色</td></tr>
+            <tr><td><code>--cluster-energy</code></td><td>demo 每帧写入 0–1，驱动光晕</td></tr>
+            <tr><td><code>.is-active-cluster.is-playing</code></td><td>显示徽标 + 26s 缓慢推镜</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="specimen-row">
+      <div class="specimen spec-1x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 1</b><span class="spec-dim">283 × 210</span></div>
+        <article class="c-card c-card--dark c-visual sz-1x1">
+  <img class="c-visual__art" src="assets/img/stories/dadong.jpg" alt="大东 四周年插画" />
+  <div class="c-visual__glow" aria-hidden="true"></div>
+  <div class="c-visual__badge">正在播放</div>
+  <div class="c-caption">
+    <span class="c-caption__title">大东</span>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-1x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 2</b><span class="spec-dim">283 × 436</span></div>
+        <article class="c-card c-card--dark c-visual sz-1x2">
+  <img class="c-visual__art" src="assets/img/stories/dadong.jpg" alt="大东 四周年插画" />
+  <div class="c-visual__glow" aria-hidden="true"></div>
+  <div class="c-visual__badge">正在播放</div>
+  <div class="c-caption">
+    <span class="c-caption__title">大东</span>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 1</b><span class="spec-dim">582 × 210</span></div>
+        <article class="c-card c-card--dark c-visual sz-2x1">
+  <img class="c-visual__art" src="assets/img/stories/dadong.jpg" alt="大东 四周年插画" />
+  <div class="c-visual__glow" aria-hidden="true"></div>
+  <div class="c-visual__badge">正在播放</div>
+  <div class="c-caption">
+    <span class="c-caption__title">大东</span>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 2</b><span class="spec-dim">582 × 436</span></div>
+        <article class="c-card c-card--dark c-visual sz-2x2 is-active-cluster is-playing">
+  <img class="c-visual__art" src="assets/img/stories/dadong.jpg" alt="大东 四周年插画" />
+  <div class="c-visual__glow" aria-hidden="true"></div>
+  <div class="c-visual__badge">正在播放</div>
+  <div class="c-caption">
+    <span class="c-caption__title">大东</span>
+  </div>
+</article>
+      </div>
+      </div>
+    </section>
+
+    <section class="ui-section" id="lyrics">
+      <div class="section-head">
+        <h2>c-lyrics 歌词</h2>
+        <span class="tag">LRC / multi-line</span>
+      </div>
+      <p class="section-desc">
+        1×1 与其余尺寸都是可滚动的多行歌词，1×1 字号稍大。当前句在 1×1 用荧光笔下划线，
+        其他尺寸用底色块；制作名单与日期不进歌词卡。
+      </p>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3>内容字段</h3>
+          <table class="doc-table">
+            <thead><tr><th>字段</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>c-lyrics__scroll</code></td><td>歌词滚动区</td></tr>
+            <tr><td><code>c-lyrics__line</code></td><td>单行歌词</td></tr>
+            <tr><td><code>c-lyrics__line.is-active</code></td><td>当前句</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-block">
+          <h3>可变样式与状态</h3>
+          <table class="doc-table">
+            <thead><tr><th>变量 / 状态</th><th>说明</th></tr></thead>
+            <tbody>
+            <tr><td><code>--cluster-soft</code></td><td>当前句底色 / 1×1 荧光笔</td></tr>
+            <tr><td><code>.is-active</code></td><td>当前句</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="specimen-row">
+      <div class="specimen spec-1x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 1</b><span class="spec-dim">283 × 210</span></div>
+        <article class="c-card c-lyrics sz-1x1 paper-grain">
+  <div class="c-lyrics__scroll js-center-lyrics">
+      <div class="c-lyrics__line"><span class="c-lyrics__text">有饛簋飧 有捄棘匕</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">周道如砥 其直如矢</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">君子所履 小人所视</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">睠言顾之 潸焉出涕</span></div>
+      <div class="c-lyrics__line is-active"><span class="c-lyrics__text">小东大东 杼柚其空</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">纠纠葛屦 可以履霜</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">佻佻公子 行彼周行</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">既往既来 使我心疚</span></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-1x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>1 × 2</b><span class="spec-dim">283 × 436</span></div>
+        <article class="c-card c-lyrics sz-1x2 paper-grain">
+  <div class="c-lyrics__scroll js-center-lyrics">
+      <div class="c-lyrics__line"><span class="c-lyrics__text">有饛簋飧 有捄棘匕</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">周道如砥 其直如矢</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">君子所履 小人所视</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">睠言顾之 潸焉出涕</span></div>
+      <div class="c-lyrics__line is-active"><span class="c-lyrics__text">小东大东 杼柚其空</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">纠纠葛屦 可以履霜</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">佻佻公子 行彼周行</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">既往既来 使我心疚</span></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x1" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 1</b><span class="spec-dim">582 × 210</span></div>
+        <article class="c-card c-lyrics sz-2x1 paper-grain">
+  <div class="c-lyrics__scroll js-center-lyrics">
+      <div class="c-lyrics__line"><span class="c-lyrics__text">有饛簋飧 有捄棘匕</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">周道如砥 其直如矢</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">君子所履 小人所视</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">睠言顾之 潸焉出涕</span></div>
+      <div class="c-lyrics__line is-active"><span class="c-lyrics__text">小东大东 杼柚其空</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">纠纠葛屦 可以履霜</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">佻佻公子 行彼周行</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">既往既来 使我心疚</span></div>
+  </div>
+</article>
+      </div>
+      <div class="specimen spec-2x2" style="--cluster-accent:#A8452C;--cluster-soft:rgba(168,69,44,.14)">
+        <div class="spec-label"><b>2 × 2</b><span class="spec-dim">582 × 436</span></div>
+        <article class="c-card c-lyrics sz-2x2 paper-grain is-active-cluster is-playing">
+  <div class="c-lyrics__scroll js-center-lyrics">
+      <div class="c-lyrics__line"><span class="c-lyrics__text">有饛簋飧 有捄棘匕</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">周道如砥 其直如矢</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">君子所履 小人所视</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">睠言顾之 潸焉出涕</span></div>
+      <div class="c-lyrics__line is-active"><span class="c-lyrics__text">小东大东 杼柚其空</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">纠纠葛屦 可以履霜</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">佻佻公子 行彼周行</span></div>
+      <div class="c-lyrics__line"><span class="c-lyrics__text">既往既来 使我心疚</span></div>
+  </div>
+</article>
+      </div>
+      </div>
+    </section>
+
+    <section class="ui-section" id="usage">
+      <div class="section-head">
+        <h2>用法</h2>
+        <span class="tag">Markup</span>
+      </div>
+      <p class="section-desc">
+        卡片壳只负责圆角、边框、阴影和裁切；组件根节点同时挂 <code>c-card</code> 和组件类，
+        再加一个尺寸类。外框宽高由使用页面决定（demo 里由画布的网格计算）。
+      </p>
+      <pre class="code-block"><span class="tok-tag">&lt;article</span> <span class="tok-attr">class</span>=<span class="tok-str">"c-card c-record sz-1x2"</span>
+         <span class="tok-attr">style</span>=<span class="tok-str">"--cluster-accent: #A8452C; --cluster-soft: rgba(168,69,44,.14)"</span><span class="tok-tag">&gt;</span>
+  &lt;div class="c-record__deck"&gt;…&lt;/div&gt;
+  &lt;div class="c-record__slot"&gt;&lt;/div&gt;
+  &lt;div class="c-record__disc"&gt;…&lt;/div&gt;
+<span class="tok-tag">&lt;/article&gt;</span></pre>
+      <p class="section-desc" style="margin-top:16px">
+        状态直接加在同一个根节点：<code>.is-active-cluster</code> 表示“当前曲目组”，
+        <code>.is-playing</code> 表示“正在播放”。歌词行用 <code>.is-active</code>。
+      </p>
+    </section>
+
+    <footer class="ui-footer">
+      <span>和诗以歌 上海交通大学国学社乐府部</span>
+      <span><a href="demo.html">打开画布 demo ↗</a> <a href="components.css">查看 components.css</a></span>
+    </footer>
+  </main>
+
+
+  <script>
+    // 让展示页的歌词栏停在当前句；字体加载完再校正一次
+    const centerLyrics = () => {
+      document.querySelectorAll('.js-center-lyrics').forEach((scroll) => {
+        const active = scroll.querySelector('.is-active');
+        if (!active) return;
+        scroll.scrollTop = Math.max(
+          0,
+          active.offsetTop - scroll.clientHeight / 2 + active.clientHeight / 2
+        );
+      });
+    };
+    centerLyrics();
+    window.addEventListener('load', centerLyrics);
+  </script>
+</body>
+</html>
+
