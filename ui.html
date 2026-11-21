@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>和诗以歌 UI 组件库</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231C1917'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23F4F0EC'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%231C1917'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -857,9 +857,9 @@
         <span class="tag">Editorial note</span>
       </div>
       <p class="section-desc">
-        纸面 + 和纸胶带。1×1 只保留主题词、曲名和摘要；其余尺寸显示引文与更长摘要。
-        点右上角的 … 直接把卡片变成 2×2，等同手动拖成 2×2：下方卡片让位，镜头不动，
-        2×2 就是展开态，没有关闭按钮，全文在卡片内部滚动。
+        纸面 + 和纸胶带。1×1 只保留主题词、曲名和摘要；2×1 显示引文与摘要；1×2 是全文阅读版，
+        大字号、全文、卡内滚动，适合移动端窄卡。点右上角的 … 直接把卡片变成 2×2，
+        等同手动拖成 2×2：下方卡片让位，镜头不动，没有关闭按钮。
       </p>
       <div class="doc-grid">
         <div class="doc-block">
@@ -870,8 +870,8 @@
             <tr><td><code>c-story__kicker</code></td><td>主题词，如“悲歌”</td></tr>
             <tr><td><code>c-story__title</code></td><td>曲名</td></tr>
             <tr><td><code>c-story__quote</code></td><td>引文，左侧强调色竖线</td></tr>
-            <tr><td><code>c-story__lead</code></td><td>故事摘要，按尺寸截断 2–6 行</td></tr>
-            <tr><td><code>c-story__full</code></td><td>全文，2×2 时显示</td></tr>
+            <tr><td><code>c-story__lead</code></td><td>故事摘要，1×1 / 2×1 显示</td></tr>
+            <tr><td><code>c-story__full</code></td><td>全文，1×2 / 2×2 时显示，卡内滚动</td></tr>
             <tr><td><code>c-credits</code></td><td>制作名单，字段 badge + 值 plaintext</td></tr>
             <tr><td><code>c-story__expand</code></td><td>仅 1×1 / 1×2 / 2×1 显示的 … 按钮</td></tr>
             </tbody>
@@ -914,6 +914,20 @@
     <h3 class="c-story__title">大东</h3>
     <blockquote class="c-story__quote">“维天有汉，监亦有光”</blockquote>
     <p class="c-story__lead">“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。 故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+    <div class="c-story__full">
+      <p>“人不可能两次踏入一条河流。”对于《大东》的创作者木猫来说，这首歌诞生于一个无法复制的夜晚。</p>
+      <h4>若合一契的悲歌</h4>
+      <p>故事始于本科时期一段压抑的时光。那时的木猫正处于生活的低谷，“风波迭起，芳情不度”。在一种强烈的“去国怀乡”的情绪中，他偶然刷到了《诗经》大东的讲解视频。</p>
+      <p>这是三千年前殷商遗民的歌谣：天上的银河灿烂，地上的征役无休；贵族享乐，百姓赤贫。这种跨越时空的苦闷，让木猫瞬间产生了一种“若合一契”的战栗——他仿佛听懂了那些仰望星空的古人。</p>
+      <h4>灵感与格律的交响</h4>
+      <p>《大东》的原诗结构奇特，前四段沉郁质实，后三段却瑰丽奇崛，仿佛是由两篇不同的作品拼接而成。创作的过程也呼应了这种结构。</p>
+      <p>在那次灵感迸发的洗澡间隙，木猫脑海中突然闪过黄霑《沧海一声笑》的豪迈，决定用宫商角徵羽的五声音阶起头，一气呵成谱写了后半段的高潮——既不可张扬宏大，也不能流于琐碎，那是压抑后的爆发。</p>
+      <p>而前半段的叙事，则由林雨夜（椰椰）深度参与。她用国学社一贯坚持的“依字行腔”原则，对旋律进行了精细的打磨与调整，弥补了原本音准上的瑕疵，让古老的文字在现代的律动中找到了最准确的咬字与呼吸。</p>
+      <h4>四点半的绝响</h4>
+      <p>那是一个疯狂的夜晚。两位创作者，一间小房间，床与钢琴，凌晨四点半。“用情绪的花火拼凑出曲调”，木猫说，即便后来远渡重洋，拥有了更好的独立空间，他也再没能复刻那一晚纯粹的无拘表达。</p>
+      <p>《大东》不仅是一首复古之作，它更像是一个现代灵魂与古老历史的握手。闭上眼睛，你似乎能听到那来自东方的歌谣：他们痛苦，他们悲歌，但他们依然在星空下，顶天立地地活着。</p>
+      <div class="c-credits"><span class="c-credits__item"><span class="c-credits__key">词</span><span class="c-credits__value">《诗经》小雅</span></span><span class="c-credits__item"><span class="c-credits__key">曲</span><span class="c-credits__value">木猫、林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">编曲</span><span class="c-credits__value">林雨夜</span></span><span class="c-credits__item"><span class="c-credits__key">唱</span><span class="c-credits__value">ACE小夜</span></span><span class="c-credits__item"><span class="c-credits__key">出品</span><span class="c-credits__value">上海交通大学国学社</span></span></div>
+    </div>
   </div>
 </article>
       </div>
@@ -1165,6 +1179,11 @@
 
 
   <script>
+    // 禁用浏览器级页面缩放；展示页没有画布手势，页面本身保持可滚动
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => {
+      document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+    });
+
     // 让展示页的歌词栏停在当前句；字体加载完再校正一次
     const centerLyrics = () => {
       document.querySelectorAll('.js-center-lyrics').forEach((scroll) => {

@@ -33,6 +33,14 @@
 /* ==========================================================================
    1. Design Tokens
    ========================================================================== */
+/* 禁用浏览器级页面缩放与回弹；画布内的双指缩放由 pointer 手势处理 */
+html,
+body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
 :root {
   --bg-canvas: #333333;
   --text-primary: #1C1917;
@@ -968,26 +976,65 @@
   font-size: 13px;
 }
 
-/* --- 1x2 长文 --- */
+/* --- 1x2 全文阅读：移动端窄卡，全文 + 大字号 + 卡内滚动 --- */
 .c-story.sz-1x2 .c-story__inner {
-  padding: 28px 20px 20px;
+  padding: 26px 20px 20px;
   gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 25, 23, 0.22) transparent;
+}
+
+.c-story.sz-1x2 .c-story__inner::-webkit-scrollbar {
+  width: 4px;
+}
+
+.c-story.sz-1x2 .c-story__inner::-webkit-scrollbar-thumb {
+  background: rgba(28, 25, 23, 0.2);
+  border-radius: 2px;
+}
+
+.c-story.sz-1x2 .c-story__kicker {
+  font-size: 10.5px;
 }
 
 .c-story.sz-1x2 .c-story__title {
-  font-size: 21px;
+  font-size: 22px;
+  line-height: 1.28;
   white-space: normal;
 }
 
 .c-story.sz-1x2 .c-story__quote {
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 1.7;
   -webkit-line-clamp: 3;
 }
 
+/* 1x2 不再用摘要，直接读全文 */
 .c-story.sz-1x2 .c-story__lead {
-  font-size: 13px;
-  line-height: 1.8;
-  -webkit-line-clamp: 8;
+  display: none;
+}
+
+.c-story.sz-1x2 .c-story__full {
+  display: block;
+}
+
+.c-story.sz-1x2 .c-story__full p {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.95;
+}
+
+.c-story.sz-1x2 .c-story__full h4 {
+  margin: 18px 0 8px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.c-story.sz-1x2 .c-story__full .c-credits {
+  margin-top: 16px;
+  padding-top: 12px;
 }
 
 .c-story.sz-1x2 .c-story__expand {

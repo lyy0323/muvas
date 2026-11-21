@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>和诗以歌 数字黑胶画布</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231C1917'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23F4F0EC'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%231C1917'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -704,6 +704,11 @@
   <script>
     (() => {
       'use strict';
+
+      // 禁用浏览器级页面缩放：画布内的双指缩放仍由 pointer 手势处理
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => {
+        document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+      });
       const ALBUM = {
         title: '和诗以歌',
         artist: '上海交通大学国学社 乐府部',
@@ -1700,8 +1705,24 @@
         return Boolean(activeResize) || Boolean(dragState);
       }
 
+      let cameraRaf = 0;
+
       function applyCameraTransform() {
+        // 只写合成器属性；缩放/平移过程中不再改任何会触发布局的样式
         canvasWorld.style.transform = `translate3d(${camX.toFixed(2)}px, ${camY.toFixed(2)}px, 0) scale(${camScale.toFixed(4)})`;
+      }
+
+      function scheduleCameraTransform() {
+        if (cameraRaf) return;
+        cameraRaf = requestAnimationFrame(() => {
+          cameraRaf = 0;
+          applyCameraTransform();
+        });
+      }
+
+      // --cam-scale 会让拖拽区/缩放手柄重新布局，点阵背景会全屏重绘；
+      // 这两类样式只在手势结束、镜头停稳时同步一次。
+      function syncCameraChrome() {
         canvasViewport.style.setProperty('--cam-scale', camScale.toFixed(4));
         const scaledStep = DOT_GRID_STEP * camScale;
         canvasViewport.style.backgroundSize = `${scaledStep.toFixed(2)}px ${scaledStep.toFixed(2)}px`;
@@ -1712,6 +1733,10 @@
         if (cameraAnimRaf) {
           cancelAnimationFrame(cameraAnimRaf);
           cameraAnimRaf = null;
+        }
+        if (cameraRaf) {
+          cancelAnimationFrame(cameraRaf);
+          cameraRaf = 0;
         }
       }
 
@@ -1727,6 +1752,7 @@
           camY = ty;
           camScale = ts;
           applyCameraTransform();
+          syncCameraChrome();
           return;
         }
 
@@ -1748,6 +1774,7 @@
           applyCameraTransform();
 
           cameraAnimRaf = t < 1 ? requestAnimationFrame(step) : null;
+          if (t >= 1) syncCameraChrome();
         }
 
         cameraAnimRaf = requestAnimationFrame(step);
@@ -1970,7 +1997,7 @@
         ) {
           panState.moved = true;
         }
-        applyCameraTransform();
+        scheduleCameraTransform();
       });
 
       // 平移结束后浏览器仍会补发一次 click；若不吞掉，Space+拖拽会让被拖过的卡片误触点击
@@ -1984,6 +2011,7 @@
         panState = null;
         canvasViewport.classList.remove('is-panning');
         if (moved) suppressClickUntil = performance.now() + 120;
+        syncCameraChrome();
         try {
           if (canvasViewport.hasPointerCapture(pointerId)) {
             canvasViewport.releasePointerCapture(pointerId);
@@ -2051,6 +2079,7 @@
         gesture.timer = setTimeout(() => {
           if (gesture.el) gesture.el.style.scrollBehavior = gesture.prevBehavior;
           if (wheelGesture === gesture) wheelGesture = null;
+          syncCameraChrome();
         }, WHEEL_GESTURE_GAP);
 
         if (gesture.mode === 'inner') {
@@ -2096,7 +2125,7 @@
           camY -= dy;
         }
 
-        applyCameraTransform();
+        scheduleCameraTransform();
       }, { passive: false });
 
       /* ---------- Touch Gestures: 单指平移 / 双指缩放 / 内部滚动 ---------- */
@@ -2178,7 +2207,7 @@
         camX = midX - vp.left - g.anchorX * nextScale;
         camY = midY - vp.top - g.anchorY * nextScale;
         g.moved = true;
-        applyCameraTransform();
+        scheduleCameraTransform();
       }
 
       function onTouchPointerDown(e) {
@@ -2270,7 +2299,7 @@
           }
           camX = g.originCamX + (e.clientX - g.startX);
           camY = g.originCamY + (e.clientY - g.startY);
-          applyCameraTransform();
+          scheduleCameraTransform();
         }
       }
 
@@ -2294,6 +2323,7 @@
             touchGesture = null;
           }
           canvasViewport.classList.remove('is-panning');
+          syncCameraChrome();
           if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
           return;
         }
@@ -2305,6 +2335,7 @@
         }
         touchGesture = null;
         canvasViewport.classList.remove('is-panning');
+        syncCameraChrome();
         if (g.moved && !cancelled) suppressClickUntil = performance.now() + 200;
       }
 
@@ -2367,7 +2398,7 @@
         if (vx !== 0 || vy !== 0) {
           camX += vx;
           camY += vy;
-          applyCameraTransform();
+          scheduleCameraTransform();
 
           if (resizing) updateResizePreview(lastPointerX, lastPointerY);
           if (dragging) updateDragPositionAndHitTest(lastPointerX, lastPointerY);
